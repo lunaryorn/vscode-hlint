@@ -2,6 +2,19 @@
 
 Lint Haskell code with Hlint 2.
 
+## Prior Art
+
+[Haskell Linter](https://github.com/hoovercj/vscode-haskell-linter).
+
+I wrote this extension because the above does not currently work with Hlint 2,
+and I found the implementation overly verbose and clumsy when trying to address
+the issue.  This extension is much simpler and much cleaner, and gets away with
+much less mutable state.
+
+On the other hand it is also less powerful.  In particular it only lints saved
+documents—mostly because hlint 2 does not support stdin currently—and cannot
+automatically fix errors.  I'll probably add the latter at some point.
+
 ## License
 
 Copyright (C) 2017  Sebastian Wiesner <swiesner@lunaryorn.com>
