@@ -3,6 +3,13 @@
     "displayName": "hlint",
     "description": "Lint Haskell with Hlint 2",
     "version": "0.1.0",
+    "homepage": "https://github.com/lunaryorn/vscode-hlint",
+    "bugs": "https://github.com/lunaryorn/vscode-hlint/issues",
+    "author": {
+        "name": "Sebastian Wiesner",
+        "email": "swiesner@lunaryorn.com",
+        "url": "http://www.lunaryorn.com"
+    },
     "repository": {
         "type": "git",
         "url": "https://github.com/lunaryorn/vscode-hlint.git"
