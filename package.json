@@ -3,6 +3,11 @@
     "displayName": "hlint",
     "description": "Lint Haskell with Hlint 2",
     "version": "0.0.1",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/lunaryorn/vscode-hlint.git"
+    },
+    "license": "GPL-3.0",
     "publisher": "lunaryorn",
     "engines": {
         "vscode": "^1.12.0"
@@ -11,14 +16,23 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.sayHello"
+        "onLanguage:haskell"
     ],
     "main": "./out/src/extension",
     "contributes": {
-        "commands": [{
-            "command": "extension.sayHello",
-            "title": "Hello World"
-        }]
+        "languages": [
+            {
+                "id": "haskell",
+                "aliases": [
+                    "Haskell",
+                    "haskell"
+                ],
+                "extensions": [
+                    ".hs",
+                    ".lhs"
+                ]
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "tsc -p ./",
@@ -29,8 +43,6 @@
     "devDependencies": {
         "typescript": "^2.0.3",
         "vscode": "^1.0.0",
-        "mocha": "^2.3.3",
-        "@types/node": "^6.0.40",
-        "@types/mocha": "^2.2.32"
+        "@types/node": "^6.0.40"
     }
 }
