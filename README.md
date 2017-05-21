@@ -2,6 +2,21 @@
 
 Lint Haskell code with Hlint 2.
 
+## Prerequisites
+
+`hlint` (version 2 or newer) must be available in `$PATH`.
+
+## Usage
+
+Just save a Haskell file.
+
+**Note:** By default most Hlint hints are "suggestions".  VSCode doesn't show
+these in the editor; you'll need to summon the "Problems" window explicitly to
+see those.  You can [configure hlint][1] to change the severity of hints if you
+like.
+
+[1]: https://github.com/ndmitchell/hlint#customizing-the-hints
+
 ## Prior Art
 
 [Haskell Linter](https://github.com/hoovercj/vscode-haskell-linter).
