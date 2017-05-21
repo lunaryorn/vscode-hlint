@@ -20,8 +20,14 @@ import * as vscode from 'vscode';
 import { execFile } from 'child_process';
 import { existsSync } from 'fs';
 
+/**
+ * An hlint severity.
+ */
 type HlintSeverity = 'Ignore' | 'Suggestion' | 'Warning' | 'Error';
 
+/**
+ * An hlint message, as it appears in hlint's JSON output.
+ */
 interface IHlintMessage {
     /** The module this message appeared in. */
     readonly module: string;
@@ -51,6 +57,13 @@ interface IHlintMessage {
     readonly refactorings: string;
 }
 
+/**
+ * Convert an hlint message severity to the corresponding VSCode diagnostic
+ * severity.
+ *
+ * @param hlintSeverity An hlint message severity as from hlint's JSON
+ * @return The corresponding severity
+ */
 const toDiagnosticSeverity = (hlintSeverity: HlintSeverity): vscode.DiagnosticSeverity => {
     switch (hlintSeverity) {
         case 'Suggestion':
@@ -64,6 +77,12 @@ const toDiagnosticSeverity = (hlintSeverity: HlintSeverity): vscode.DiagnosticSe
     }
 };
 
+/**
+ * Convert an hlint message to a VSCode diagnostic.
+ *
+ * @param hlintMessage An hlint message from hlint's JSON output
+ * @return The corresponding diagnostic
+ */
 const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
     const range = new vscode.Range(
         hlintMessage.startLine - 1,
@@ -77,13 +96,24 @@ const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
     return new vscode.Diagnostic(range, message, severity);
 };
 
+/**
+ * Convert an hlint message to a diagnostic entry, i.e. a pair of a URI and one
+ * or more diagnostics.
+ *
+ * @param msg An hlint message.
+ * @return A pair of the message's file name and an array with the corresponding
+ *         diagnostic as single element.
+ */
+const toDiagnosticEntry = (msg: IHlintMessage): [vscode.Uri, vscode.Diagnostic[]] =>
+    [vscode.Uri.file(msg.file), [toDiagnostic(msg)]]
 
 /**
  * Lint a single text document.
  *
+ * @param diagnostics The diagnostic collection to add the results of linting to
  * @param document The text document to lint
  */
-const lintDocument = (diagnosticsCollection: vscode.DiagnosticCollection) => (document: vscode.TextDocument): void => {
+const lintDocument = (diagnostics: vscode.DiagnosticCollection) => (document: vscode.TextDocument): void => {
     if (document.isDirty || (!existsSync(document.fileName))) {
         // Bail out if the document isn't saved or doesn't exist no disk
         return;
@@ -99,16 +129,24 @@ const lintDocument = (diagnosticsCollection: vscode.DiagnosticCollection) => (do
             vscode.window.showErrorMessage(`hslint failed: ${stderr}`);
         } else {
             const messages = JSON.parse(stdout) as IHlintMessage[];
-            const diagnostics = messages
-                .filter(msg => msg.file === document.fileName)
-                .map(toDiagnostic);
-            diagnosticsCollection.set(document.uri, diagnostics);
+            diagnostics.set(messages.map(toDiagnosticEntry));
         }
     });
 }
 
+/**
+ * Activate this extension.
+ *
+ * VSCode invokes this entry point whenever this extension is activated.
+ *
+ * @param context The context for this extension.
+ */
 export function activate(context: vscode.ExtensionContext) {
+    // Create a diagnostic collection to highlight hlint messages.
     const diagnostics = vscode.languages.createDiagnosticCollection('hlint2');
+
+    // Register the diagnostic collection to make sure it's disposed when the
+    // extension is disabled.
     context.subscriptions.push(diagnostics);
 
     // Start linting documents when they are saved or freshly opened
@@ -118,4 +156,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidCloseTextDocument(document => {
         diagnostics.delete(document.uri);
     }, null, context.subscriptions);
+
+    // Lint all open documents
+    vscode.workspace.textDocuments.forEach(lintDocument(diagnostics));
 }
