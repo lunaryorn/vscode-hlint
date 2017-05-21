@@ -1,10 +1,17 @@
 # hlint README
 
-Lint Haskell code with Hlint 2.
+Lint Haskell code with [Hlint][] 2.
+
+[hlint]: https://github.com/ndmitchell/hlint
 
 ## Prerequisites
 
 `hlint` (version 2 or newer) must be available in `$PATH`.
+
+To apply suggestions `refactor` from [apply-refact][] must be in `$PATH` as
+well.
+
+[apply-refact]: https://github.com/mpickering/apply-refact
 
 ## Usage
 
@@ -24,11 +31,11 @@ like.
 I wrote this extension because the above does not currently work with Hlint 2,
 and I found the implementation overly verbose and clumsy when trying to address
 the issue.  If I may say this extension has the better code: Less mutable state,
-much simpler implementation, and better documentation :blush:
+much simpler implementation, and better documentation :blush:  It also uses
+`refactor` to apply hlint suggestions instead of text replacement.
 
 On the other hand it is also less powerful.  In particular it only lints saved
-documents—mostly because hlint 2 does not support stdin currently—and cannot
-automatically fix errors.  I'll probably add the latter at some point.
+documents—mostly because hlint 2 does not support stdin currently.
 
 ## License
 

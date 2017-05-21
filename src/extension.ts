@@ -26,6 +26,18 @@ import { existsSync } from 'fs';
 type HlintSeverity = 'Ignore' | 'Suggestion' | 'Warning' | 'Error';
 
 /**
+ * Constant denoting diagnostics from hlint.
+ */
+const HLINT_SOURCE = 'hlint';
+
+/**
+ * Commands this extension provides
+ */
+const commands = {
+    APPLY_REFACTORINGS: 'hlint.applyRefactorings'
+}
+
+/**
  * An hlint message, as it appears in hlint's JSON output.
  */
 interface IHlintMessage {
@@ -93,7 +105,11 @@ const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
         `${hlintMessage.hint}. Replace with ${hlintMessage.to}` :
         hlintMessage.hint;
     const severity = toDiagnosticSeverity(hlintMessage.severity);
-    return new vscode.Diagnostic(range, message, severity);
+    const diagnostic = new vscode.Diagnostic(range, message, severity);
+    diagnostic.source = HLINT_SOURCE;
+    // Cheat and track the refactoring information as "code" to get hold of it later
+    diagnostic.code = hlintMessage.refactorings;
+    return diagnostic;
 };
 
 /**
@@ -102,28 +118,87 @@ const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
  * @param diagnostics The diagnostic collection to add the results of linting to
  * @param document The text document to lint
  */
-const lintDocument = (diagnostics: vscode.DiagnosticCollection) => (document: vscode.TextDocument): void => {
+const lintDocument = (diagnostics: vscode.DiagnosticCollection) => (document: vscode.TextDocument): Promise<void> => {
     if (document.isDirty || (!existsSync(document.fileName))) {
         // Bail out if the document isn't saved or doesn't exist no disk
-        return;
+        return Promise.resolve();
     }
-    const options = { cwd: vscode.workspace.rootPath || process.cwd() };
-    execFile('hlint', ['--json', document.fileName], options, (error, stdout, stderr) => {
-        if (error && (<any>error).errno) {
-            // Check if an errno property exists on the error.  If so it's a
-            // system error which we should tell the user about, otherwise it's
-            // perhaps just the non-zero exit code of hlint when it found something
-            vscode.window.showErrorMessage(`Failed to run hlint: ${error.message}`);
-        } else if (stderr.length > 0) {
-            vscode.window.showErrorMessage(`hslint failed: ${stderr}`);
-        } else {
-            const messages = JSON.parse(stdout) as IHlintMessage[];
-            diagnostics.set(
-                document.uri,
-                messages.filter(m => m.file === document.fileName).map(toDiagnostic))
-        }
+    return new Promise<void>((resolve, reject) => {
+        const options = { cwd: vscode.workspace.rootPath || process.cwd() };
+        execFile('hlint', ['--json', document.fileName], options, (error, stdout, stderr) => {
+            if (error && (<any>error).errno) {
+                // Check if an errno property exists on the error.  If so it's a
+                // system error which we should tell the user about, otherwise it's
+                // perhaps just the non-zero exit code of hlint when it found something
+                vscode.window.showErrorMessage(`Failed to run hlint: ${error.message}`);
+                reject(error);
+            } else if (stderr.length > 0) {
+                const errorMessage = `hslint failed: ${stderr}`;
+                vscode.window.showErrorMessage(errorMessage);
+                reject(errorMessage);
+            } else {
+                const messages = JSON.parse(stdout) as IHlintMessage[];
+                diagnostics.set(
+                    document.uri,
+                    messages.filter(m => m.file === document.fileName).map(toDiagnostic))
+                resolve();
+            }
+        })
     });
 }
+
+/**
+ * Provide commands to apply hlint suggestions.
+ */
+class HlintRefactoring implements vscode.CodeActionProvider {
+    public provideCodeActions(document: vscode.TextDocument,
+        range: vscode.Range,
+        context: vscode.CodeActionContext,
+        token: vscode.CancellationToken): vscode.Command[] {
+        // Create a code action for every diagnostic from hlint that provides a
+        // refactoring
+        return context.diagnostics
+            .filter(d => d.source === HLINT_SOURCE && d.code)
+            .map(diagnostic => {
+                return {
+                    command: commands.APPLY_REFACTORINGS,
+                    title: 'Apply suggestion',
+                    arguments: [document, diagnostic.code]
+                }
+            });
+    }
+}
+
+/**
+ * Apply refactorings, used as command callback for a code action command.
+ *
+ * Call the "refactor" tool to apply the refactoring.
+ *
+ * @param diagnostics The diagnostics collection, required to lint the file after applying diagnostics
+ * @param document The text document that is being refactoring
+ * @param refactoring The refactoring, as serialized structure for "refactor"
+ */
+const applyRefactorings = (diagnostics: vscode.DiagnosticCollection) =>
+    (document: vscode.TextDocument, refactorings: string): Thenable<boolean> => {
+        // Save the document and run "refactor" over it to apply the suggestion.
+        return document.save().then(success => {
+            return new Promise<boolean>((resolve, reject) => {
+                const refactor = execFile('refactor', [document.fileName, '--inplace'],
+                    (error, stdout, stderr) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            // Hlint the document again after the refactoring
+                            // was applied, to update the diagnostics.
+                            lintDocument(diagnostics)(document).then(() => resolve(true));
+                        }
+                    });
+                // Feed the refactor information to "refactor"; a unusual input
+                // format hence this strange leading empty string.
+                refactor.stdin.write(`[("", ${refactorings})]`, () => refactor.stdin.end());
+            });
+        });
+    }
 
 /**
  * Activate this extension.
@@ -133,12 +208,16 @@ const lintDocument = (diagnostics: vscode.DiagnosticCollection) => (document: vs
  * @param context The context for this extension.
  */
 export function activate(context: vscode.ExtensionContext) {
-    // Create a diagnostic collection to highlight hlint messages.
-    const diagnostics = vscode.languages.createDiagnosticCollection('hlint2');
-
-    // Register the diagnostic collection to make sure it's disposed when the
-    // extension is disabled.
+    // Create a diagnostic collection to highlight hlint messages, and register
+    // it to make sure it's disposed when the extension is disabled.
+    const diagnostics = vscode.languages.createDiagnosticCollection('hlint');
     context.subscriptions.push(diagnostics);
+
+    // Register code actions to apply hlint suggestions, and a corresponding command.
+    context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
+        'haskell', new HlintRefactoring));
+    context.subscriptions.push(vscode.commands.registerCommand(
+        commands.APPLY_REFACTORINGS, applyRefactorings(diagnostics)));
 
     // Start linting documents when they are saved or freshly opened
     vscode.workspace.onDidSaveTextDocument(lintDocument(diagnostics), null, context.subscriptions);

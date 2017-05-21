@@ -6,6 +6,10 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+### Added
+- Apply suggestions from hlint (requires
+  [apply-refact](https://github.com/mpickering/apply-refact))
+
 ### Fixed
 - Properly unset diagnostics
 
