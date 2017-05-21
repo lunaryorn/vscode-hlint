@@ -23,8 +23,8 @@ like.
 
 I wrote this extension because the above does not currently work with Hlint 2,
 and I found the implementation overly verbose and clumsy when trying to address
-the issue.  This extension is much simpler and much cleaner, and gets away with
-much less mutable state.
+the issue.  If I may say this extension has the better code: Less mutable state,
+much simpler implementation, and better documentation :blush:
 
 On the other hand it is also less powerful.  In particular it only lints saved
 documents—mostly because hlint 2 does not support stdin currently—and cannot
