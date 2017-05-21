@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+### Fixed
+- Properly unset diagnostics
 
 ## 0.1.0 - 2017-05-21
 - Initial release
