@@ -97,17 +97,6 @@ const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
 };
 
 /**
- * Convert an hlint message to a diagnostic entry, i.e. a pair of a URI and one
- * or more diagnostics.
- *
- * @param msg An hlint message.
- * @return A pair of the message's file name and an array with the corresponding
- *         diagnostic as single element.
- */
-const toDiagnosticEntry = (msg: IHlintMessage): [vscode.Uri, vscode.Diagnostic[]] =>
-    [vscode.Uri.file(msg.file), [toDiagnostic(msg)]]
-
-/**
  * Lint a single text document.
  *
  * @param diagnostics The diagnostic collection to add the results of linting to
@@ -129,7 +118,9 @@ const lintDocument = (diagnostics: vscode.DiagnosticCollection) => (document: vs
             vscode.window.showErrorMessage(`hslint failed: ${stderr}`);
         } else {
             const messages = JSON.parse(stdout) as IHlintMessage[];
-            diagnostics.set(messages.map(toDiagnosticEntry));
+            diagnostics.set(
+                document.uri,
+                messages.filter(m => m.file === document.fileName).map(toDiagnostic))
         }
     });
 }
