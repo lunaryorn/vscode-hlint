@@ -34,8 +34,8 @@ the issue.  If I may say this extension has the better code: Less mutable state,
 much simpler implementation, and better documentation :blush:  It also uses
 `refactor` to apply hlint suggestions instead of text replacement.
 
-On the other hand it is also less powerful.  In particular it only lints saved
-documents—mostly because hlint 2 does not support stdin currently.
+On the other hand this extension doesn't lint while you're typing, but only 
+when the document is saved which suits me just fine :)
 
 ## License
 
