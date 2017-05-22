@@ -1,8 +1,11 @@
-# hlint README
+# VSCode hlint
 
-Lint Haskell code with [Hlint][].
+[![Build Status](https://travis-ci.org/lunaryorn/vscode-hlint.svg?branch=master)](https://travis-ci.org/lunaryorn/vscode-hlint)
+
+Lint Haskell code with [Hlint][] in [Visual Studio Code][code].
 
 [hlint]: https://github.com/ndmitchell/hlint
+[code]: https://code.visualstudio.com
 
 ## Prerequisites
 

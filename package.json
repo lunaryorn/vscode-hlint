@@ -29,6 +29,13 @@
         "hlint",
         "refactor"
     ],
+    "badges": [
+        {
+            "url": "https://travis-ci.org/lunaryorn/vscode-hlint.svg?branch=master",
+            "href": "https://travis-ci.org/lunaryorn/vscode-hlint",
+            "description": "Build Status"
+        }
+    ],
     "activationEvents": [
         "onLanguage:haskell"
     ],
