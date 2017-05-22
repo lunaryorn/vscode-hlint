@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+### Changed
+- Improve title of quick fixes
 
 ## 0.2.0 - 2017-05-21
 ### Added

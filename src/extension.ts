@@ -180,7 +180,7 @@ class HlintRefactorings implements vscode.CodeActionProvider {
                 return {
                     arguments: [document, diagnostic.code],
                     command: commands.APPLY_REFACTORINGS,
-                    title: `${diagnostic.message}`,
+                    title: `Fix: ${diagnostic.message}`,
                 };
             });
     }
