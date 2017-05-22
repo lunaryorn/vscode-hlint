@@ -18,6 +18,12 @@
 
 import { execFile } from "child_process";
 import { existsSync } from "fs";
+import {
+    Diagnostic, DiagnosticCollection, DiagnosticSeverity,
+    TextDocument, Range, WorkspaceEdit, Command,
+    CodeActionProvider, CodeActionContext, CancellationToken,
+    ExtensionContext
+} from "vscode";
 import * as vscode from "vscode";
 
 /**
@@ -77,16 +83,16 @@ interface IHlintMessage {
  * @return The corresponding severity
  */
 const toDiagnosticSeverity =
-    (hlintSeverity: HlintSeverity): vscode.DiagnosticSeverity => {
+    (hlintSeverity: HlintSeverity): DiagnosticSeverity => {
         switch (hlintSeverity) {
             case "Suggestion":
-                return vscode.DiagnosticSeverity.Hint;
+                return DiagnosticSeverity.Hint;
             case "Warning":
-                return vscode.DiagnosticSeverity.Warning;
+                return DiagnosticSeverity.Warning;
             case "Error":
-                return vscode.DiagnosticSeverity.Error;
+                return DiagnosticSeverity.Error;
             default:
-                return vscode.DiagnosticSeverity.Information;
+                return DiagnosticSeverity.Information;
         }
     };
 
@@ -96,8 +102,8 @@ const toDiagnosticSeverity =
  * @param hlintMessage An hlint message from hlint's JSON output
  * @return The corresponding diagnostic
  */
-const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
-    const range = new vscode.Range(
+const toDiagnostic = (hlintMessage: IHlintMessage): Diagnostic => {
+    const range = new Range(
         hlintMessage.startLine - 1,
         hlintMessage.startColumn - 1,
         hlintMessage.endLine - 1,
@@ -106,7 +112,7 @@ const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
         `${hlintMessage.hint}. Replace with ${hlintMessage.to}` :
         hlintMessage.hint;
     const severity = toDiagnosticSeverity(hlintMessage.severity);
-    const diagnostic = new vscode.Diagnostic(range, message, severity);
+    const diagnostic = new Diagnostic(range, message, severity);
     diagnostic.source = HLINT_SOURCE;
     // Cheat and track the refactoring information as "code" to get hold of it
     // later
@@ -145,8 +151,8 @@ const runHlint = (fileName: string): Promise<IHlintMessage[]> =>
  * @param document The text document to lint
  */
 const lintDocument =
-    (diagnostics: vscode.DiagnosticCollection) =>
-        async (document: vscode.TextDocument): Promise<void> => {
+    (diagnostics: DiagnosticCollection) =>
+        async (document: TextDocument): Promise<void> => {
             if (document.isDirty || (!existsSync(document.fileName))) {
                 // Bail out if the document isn't saved or doesn't exist no disk
                 return;
@@ -166,12 +172,12 @@ const lintDocument =
 /**
  * Provide commands to apply hlint suggestions.
  */
-class HlintRefactorings implements vscode.CodeActionProvider {
+class HlintRefactorings implements CodeActionProvider {
     public provideCodeActions(
-        document: vscode.TextDocument,
-        range: vscode.Range,
-        context: vscode.CodeActionContext,
-        token: vscode.CancellationToken): vscode.Command[] {
+        document: TextDocument,
+        range: Range,
+        context: CodeActionContext,
+        token: CancellationToken): Command[] {
         // Create a code action for every diagnostic from hlint that provides a
         // refactoring
         return context.diagnostics
@@ -225,9 +231,9 @@ const runRefactor = (fileName: string, refactorings: string): Promise<string> =>
  * @return Whether the refactoring was applied or not
  */
 const applyRefactorings =
-    (diagnostics: vscode.DiagnosticCollection) =>
+    (diagnostics: DiagnosticCollection) =>
         async (
-            document: vscode.TextDocument,
+            document: TextDocument,
             refactorings: string): Promise<boolean> => {
             // Save the document and run "refactor" over it to apply the
             // suggestion.
@@ -240,8 +246,8 @@ const applyRefactorings =
                 // Create and apply a text edit that replaces the whole document
                 // with the refactored code.
                 const wholeDocument = document.validateRange(
-                    new vscode.Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE));
-                const edit = new vscode.WorkspaceEdit();
+                    new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE));
+                const edit = new WorkspaceEdit();
                 edit.replace(document.uri, wholeDocument, refactored);
                 return vscode.workspace.applyEdit(edit);
             } catch (error) {
@@ -257,7 +263,7 @@ const applyRefactorings =
  *
  * @param context The context for this extension.
  */
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: ExtensionContext) {
     // Create a diagnostic collection to highlight hlint messages, and register
     // it to make sure it's disposed when the extension is disabled.
     const diagnostics = vscode.languages.createDiagnosticCollection("hlint");
