@@ -121,6 +121,16 @@ const toDiagnostic = (hlintMessage: IHlintMessage): Diagnostic => {
 };
 
 /**
+ * The context for hlint operations.
+ */
+interface IHlintContext {
+    /**
+     * The diagnostic collection for Hlint hints.
+     */
+    readonly diagnostics: DiagnosticCollection;
+}
+
+/**
  * Run hlint on the given file and return all messages.
  *
  * @param fileName The name of the file to run hlint on
@@ -147,11 +157,11 @@ const runHlint = (fileName: string): Promise<IHlintMessage[]> =>
 /**
  * Lint a single text document.
  *
- * @param diagnostics The diagnostic collection to add the results of linting to
+ * @param hlint The context for hlint operations.
  * @param document The text document to lint
  */
 const lintDocument =
-    (diagnostics: DiagnosticCollection) =>
+    (hlint: IHlintContext) =>
         async (document: TextDocument): Promise<void> => {
             if (document.isDirty || (!existsSync(document.fileName))) {
                 // Bail out if the document isn't saved or doesn't exist no disk
@@ -159,12 +169,12 @@ const lintDocument =
             }
             try {
                 const messages = await runHlint(document.fileName);
-                diagnostics.set(document.uri,
+                hlint.diagnostics.set(document.uri,
                     messages
                         .filter((message) => message.file === document.fileName)
                         .map(toDiagnostic));
             } catch (error) {
-                diagnostics.delete(document.uri);
+                hlint.diagnostics.delete(document.uri);
                 vscode.window.showErrorMessage(error.message);
             }
         };
@@ -224,14 +234,13 @@ const runRefactor = (fileName: string, refactorings: string): Promise<string> =>
  * Call the "refactor" tool to apply the refactoring, and replace the document
  * contents with the refactored code.
  *
- * @param diagnostics The diagnostics collection, required to lint the file
- *                    after applying diagnostics
+ * @param hlint The context for hlint operations
  * @param document The text document that is being refactoring
  * @param refactoring The refactoring, as serialized structure for "refactor"
  * @return Whether the refactoring was applied or not
  */
 const applyRefactorings =
-    (diagnostics: DiagnosticCollection) =>
+    (hlint: IHlintContext) =>
         async (
             document: TextDocument,
             refactorings: string): Promise<boolean> => {
@@ -269,23 +278,25 @@ export function activate(context: ExtensionContext) {
     const diagnostics = vscode.languages.createDiagnosticCollection("hlint");
     context.subscriptions.push(diagnostics);
 
+    const hlint = { diagnostics };
+
     // Register code actions to apply hlint suggestions, and a corresponding
     // command.
     context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
         "haskell", new HlintRefactorings()));
     context.subscriptions.push(vscode.commands.registerCommand(
-        commands.APPLY_REFACTORINGS, applyRefactorings(diagnostics)));
+        commands.APPLY_REFACTORINGS, applyRefactorings(hlint)));
 
     // Start linting documents when they are saved or freshly opened
     vscode.workspace.onDidSaveTextDocument(
-        lintDocument(diagnostics), null, context.subscriptions);
+        lintDocument(hlint), null, context.subscriptions);
     vscode.workspace.onDidOpenTextDocument(
-        lintDocument(diagnostics), null, context.subscriptions);
+        lintDocument(hlint), null, context.subscriptions);
     // Remove a document from the diagnostics collection when it's closed
     vscode.workspace.onDidCloseTextDocument((document) => {
         diagnostics.delete(document.uri);
     }, null, context.subscriptions);
 
     // Lint all open documents
-    vscode.workspace.textDocuments.forEach(lintDocument(diagnostics));
+    vscode.workspace.textDocuments.forEach(lintDocument(hlint));
 }
