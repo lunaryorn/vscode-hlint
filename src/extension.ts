@@ -116,10 +116,12 @@ const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
 
 const runHlint = (fileName: string, cwd: string): Promise<IHlintMessage[]> =>
     new Promise<IHlintMessage[]>((resolve, reject) => {
+        // Do not return a non-zero exit code when hints apply, so that
+        // "execFile" does not fail
         execFile(
-            "hlint", ["--json", fileName],
+            "hlint", ["--no-exit-code", "--json", fileName],
             { cwd }, (error, stdout, stderr) => {
-                if (error && (error as any).errno) {
+                if (error) {
                     reject(new Error(
                         `Failed to run hlint: ${error.message}`));
                 } else if (stderr.length > 0) {
@@ -174,7 +176,7 @@ class HlintRefactorings implements vscode.CodeActionProvider {
                 return {
                     arguments: [document, diagnostic.code],
                     command: commands.APPLY_REFACTORINGS,
-                    title: "Apply suggestion",
+                    title: `${diagnostic.message}`,
                 };
             });
     }
