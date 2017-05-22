@@ -20,7 +20,14 @@
         "vscode": "^1.12.0"
     },
     "categories": [
-        "Other"
+        "Linters",
+        "Languages",
+        "Formatters"
+    ],
+    "keywords": [
+        "haskell",
+        "hlint",
+        "refactor"
     ],
     "activationEvents": [
         "onLanguage:haskell"
