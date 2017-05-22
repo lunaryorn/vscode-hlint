@@ -15,7 +15,11 @@ well.
 
 ## Usage
 
-Just save a Haskell file.
+Just open or save a Haskell file.  Hlint will automatically check your file.
+
+In some cases hlint can automatically fix issues.  In these cases a [code
+action][] is available on the problematic expression; just click on the light
+bulb in the left margin.
 
 **Note:** By default most Hlint hints are "suggestions".  VSCode doesn't show
 these in the editor; you'll need to summon the "Problems" window explicitly to
@@ -23,6 +27,7 @@ see those.  You can [configure hlint][1] to change the severity of hints if you
 like.
 
 [1]: https://github.com/ndmitchell/hlint#customizing-the-hints
+[code action]: https://code.visualstudio.com/docs/editor/editingevolved#_code-action
 
 ## Prior Art
 
