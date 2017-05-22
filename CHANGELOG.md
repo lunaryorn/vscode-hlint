@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+
+## 0.3.0 – 2017-05-22
 ### Changed
 - Improve title of quick fixes
 - Apply quick fixes as workspace edit, for better undo and more reliable text
