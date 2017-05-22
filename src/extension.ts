@@ -125,8 +125,7 @@ const runHlint = (fileName: string, cwd: string): Promise<IHlintMessage[]> =>
                     reject(new Error(
                         `Failed to run hlint: ${error.message}`));
                 } else if (stderr.length > 0) {
-                    const errorMessage = `hslint failed: ${stderr}`;
-                    reject(new Error(errorMessage));
+                    reject(new Error(`hslint failed: ${stderr}`));
                 } else {
                     resolve(JSON.parse(stdout));
                 }
