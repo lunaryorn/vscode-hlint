@@ -8,6 +8,9 @@
         "max-line-length": [
             true,
             80
+        ],
+        "max-classes-per-file": [
+            false
         ]
     },
     "rulesDirectory": []
