@@ -7,6 +7,10 @@ Versioning](http://semver.org/)!
 
 ## [Unreleased]
 
+## 0.3.1 – 2017-05-22
+### Added
+- Add more metadata for the marketplace side
+
 ## 0.3.0 – 2017-05-22
 ### Changed
 - Improve title of quick fixes
