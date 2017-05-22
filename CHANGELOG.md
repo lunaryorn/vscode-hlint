@@ -8,6 +8,8 @@ Versioning](http://semver.org/)!
 ## [Unreleased]
 ### Changed
 - Improve title of quick fixes
+- Apply quick fixes as workspace edit, for better undo and more reliable text
+  replacement [GH-2]
 
 ## 0.2.0 - 2017-05-21
 ### Added

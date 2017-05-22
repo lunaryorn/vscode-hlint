@@ -193,16 +193,17 @@ class HlintRefactorings implements vscode.CodeActionProvider {
  *
  * @param fileName The name of the file to refactor.
  * @param refactorings The refactorings to apply, as serialized string
+ * @return The entire refactored code as string
  */
-const runRefactor = (fileName: string, refactorings: string): Promise<void> =>
-    new Promise<void>((resolve, reject) => {
-        const refactor = execFile("refactor", [fileName, "--inplace"],
+const runRefactor = (fileName: string, refactorings: string): Promise<string> =>
+    new Promise<string>((resolve, reject) => {
+        const refactor = execFile("refactor", [fileName],
             (error, stdout, stderr) => {
                 if (error) {
                     reject(new Error(
                         `Failed to run refactor: ${error.message}`));
                 } else {
-                    resolve();
+                    resolve(stdout);
                 }
             });
         // Feed refactoring description to refactor and close its standard input
@@ -214,28 +215,38 @@ const runRefactor = (fileName: string, refactorings: string): Promise<void> =>
 /**
  * Apply refactorings, used as command callback for a code action command.
  *
- * Call the "refactor" tool to apply the refactoring.
+ * Call the "refactor" tool to apply the refactoring, and replace the document
+ * contents with the refactored code.
  *
  * @param diagnostics The diagnostics collection, required to lint the file
  *                    after applying diagnostics
  * @param document The text document that is being refactoring
  * @param refactoring The refactoring, as serialized structure for "refactor"
+ * @return Whether the refactoring was applied or not
  */
 const applyRefactorings =
     (diagnostics: vscode.DiagnosticCollection) =>
         async (
             document: vscode.TextDocument,
-            refactorings: string): Promise<void> => {
+            refactorings: string): Promise<boolean> => {
             // Save the document and run "refactor" over it to apply the
             // suggestion.
             await document.save();
             try {
                 // Hlint the document again after the refactoring was applied,
                 // to update the diagnostics.
-                await runRefactor(document.fileName, refactorings);
-                lintDocument(diagnostics)(document);
+                const refactored = await runRefactor(
+                    document.fileName, refactorings);
+                // Create and apply a text edit that replaces the whole document
+                // with the refactored code.
+                const wholeDocument = document.validateRange(
+                    new vscode.Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE));
+                const edit = new vscode.WorkspaceEdit();
+                edit.replace(document.uri, wholeDocument, refactored);
+                return vscode.workspace.applyEdit(edit);
             } catch (error) {
                 vscode.window.showErrorMessage(error.message);
+                return false;
             }
         };
 
