@@ -19,10 +19,17 @@
 import { execFile } from "child_process";
 import { existsSync } from "fs";
 import {
-    Diagnostic, DiagnosticCollection, DiagnosticSeverity,
-    TextDocument, Range, WorkspaceEdit, Command,
-    CodeActionProvider, CodeActionContext, CancellationToken,
-    ExtensionContext
+    CancellationToken,
+    CodeActionContext,
+    CodeActionProvider,
+    Command,
+    Diagnostic,
+    DiagnosticCollection,
+    DiagnosticSeverity,
+    ExtensionContext,
+    Range,
+    TextDocument,
+    WorkspaceEdit,
 } from "vscode";
 import * as vscode from "vscode";
 
