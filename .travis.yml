@@ -1,0 +1,8 @@
+language: node_js
+node_js:
+  - "node"
+script:
+  # Lint my code
+  - yarn run lint
+cache:
+  yarn: true
