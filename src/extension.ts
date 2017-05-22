@@ -114,8 +114,14 @@ const toDiagnostic = (hlintMessage: IHlintMessage): vscode.Diagnostic => {
     return diagnostic;
 };
 
-const runHlint = (fileName: string, cwd: string): Promise<IHlintMessage[]> =>
+/**
+ * Run hlint on the given file and return all messages.
+ *
+ * @param fileName The name of the file to run hlint on
+ */
+const runHlint = (fileName: string): Promise<IHlintMessage[]> =>
     new Promise<IHlintMessage[]>((resolve, reject) => {
+        const cwd = vscode.workspace.rootPath || process.cwd();
         // Do not return a non-zero exit code when hints apply, so that
         // "execFile" does not fail
         execFile(
@@ -145,9 +151,8 @@ const lintDocument =
                 // Bail out if the document isn't saved or doesn't exist no disk
                 return;
             }
-            const cwd = vscode.workspace.rootPath || process.cwd();
             try {
-                const messages = await runHlint(document.fileName, cwd);
+                const messages = await runHlint(document.fileName);
                 diagnostics.set(document.uri,
                     messages
                         .filter((message) => message.file === document.fileName)
@@ -181,6 +186,14 @@ class HlintRefactorings implements vscode.CodeActionProvider {
     }
 }
 
+/**
+ * Apply a refactoring on a given file.
+ *
+ * The file is refactoring in place.
+ *
+ * @param fileName The name of the file to refactor.
+ * @param refactorings The refactorings to apply, as serialized string
+ */
 const runRefactor = (fileName: string, refactorings: string): Promise<void> =>
     new Promise<void>((resolve, reject) => {
         const refactor = execFile("refactor", [fileName, "--inplace"],
