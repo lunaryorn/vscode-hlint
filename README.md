@@ -1,12 +1,13 @@
 # hlint README
 
-Lint Haskell code with [Hlint][] 2.
+Lint Haskell code with [Hlint][].
 
 [hlint]: https://github.com/ndmitchell/hlint
 
 ## Prerequisites
 
-`hlint` (version 2 or newer) must be available in `$PATH`.
+`hlint` must be available in `$PATH`.  I recommend version 2 or newer, older
+versions may or may not work.
 
 To apply suggestions `refactor` from [apply-refact][] must be in `$PATH` as
 well.
@@ -39,7 +40,7 @@ the issue.  If I may say this extension has the better code: Less mutable state,
 much simpler implementation, and better documentation :blush:  It also uses
 `refactor` to apply hlint suggestions instead of text replacement.
 
-On the other hand this extension doesn't lint while you're typing, but only 
+On the other hand this extension doesn't lint while you're typing, but only
 when the document is saved which suits me just fine :)
 
 ## License
