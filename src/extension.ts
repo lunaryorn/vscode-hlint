@@ -110,6 +110,8 @@ const toDiagnosticSeverity =
  * @return The corresponding diagnostic
  */
 const toDiagnostic = (hlintMessage: IHlintMessage): Diagnostic => {
+    // VSCode has zero-based positions, whereas hlint outputs 1-based line and
+    // column numbers.  Hence adjust accordingly.
     const range = new Range(
         hlintMessage.startLine - 1,
         hlintMessage.startColumn - 1,
