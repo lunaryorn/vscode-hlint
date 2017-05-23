@@ -299,19 +299,25 @@ class HLintRefactorings implements CodeActionProvider {
  */
 const applyRefactorings = (hlint: IHLintContext) =>
     async (document: TextDocument, refactorings: string): Promise<boolean> => {
+        try {
         const refactoredCode = await refactor(
             document.getText(MAX_RANGE), `[("", ${refactorings})]`);
         if (refactoredCode) {
             const edit = new WorkspaceEdit();
-            // Replace the whole document with the new refactored code.  Trim
-            // the last character from the refactored code because refactor
-            // seems to add an extra newline.
+                // Replace the whole document with the new refactored code.
+                // Trim the last character from the refactored code because
+                // refactor seems to add an extra newline.
             edit.replace(document.uri,
                 document.validateRange(MAX_RANGE),
                 refactoredCode.slice(0, -1));
             return vscode.workspace.applyEdit(edit);
         } else {
             return false;
+        }
+        } catch (err) {
+            vscode.window.showErrorMessage(
+                `Failed to refactor hlint suggestions: ${err.message}`);
+            throw err;
         }
     };
 
