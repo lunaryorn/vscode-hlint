@@ -18,6 +18,9 @@
 
 import { execFile } from "child_process";
 import { existsSync } from "fs";
+
+import * as semver from "semver";
+
 import {
     CancellationToken,
     CodeActionContext,
@@ -256,13 +259,65 @@ const applyRefactorings =
         };
 
 /**
+ * HLint version required for this extension.
+ *
+ * We require either 2.0.8 or newer as it adds back stdin support, or version
+ * 1.9.25 (which fixes stdin support and refactor integration) or newer and less
+ * than version 2 (as version 2 removes stdin support).
+ */
+const HLINT_VERSION_REQUIREMENT = ">=2.0.8 || <2 >=1.9.25";
+
+/**
+ * An HLint version error.
+ */
+interface IHLintVersionError {
+    /**
+     * The human-readable error message.
+     */
+    readonly message: string;
+}
+
+/**
+ * Check hlint version.
+ *
+ * @returns Either a version error or null if the version is fine.
+ */
+const checkHLintVersion = async (): Promise<IHLintVersionError | null> => {
+    const stdout = await runInWorkspace(["hlint", "--version"]);
+    const match = stdout.match(/^HLint v([^,]+),/);
+    if (match && 2 <= match.length) {
+        const hlintVersion = match[1];
+        if (semver.satisfies(hlintVersion, HLINT_VERSION_REQUIREMENT)) {
+            return null; // The version is fine.
+        } else {
+            return {
+                // tslint:disable-next-line:max-line-length
+                message: `HLint version ${hlintVersion} did not meet requirements: \
+${HLINT_VERSION_REQUIREMENT}! Please install the latest hlint version from Stackage or Hackage.`,
+            };
+        }
+    } else {
+        return {
+            message: `Failed to parse HLint version from output: ${stdout}`,
+        };
+    }
+};
+
+/**
  * Activate this extension.
  *
  * VSCode invokes this entry point whenever this extension is activated.
  *
  * @param context The context for this extension.
  */
-export function activate(context: ExtensionContext) {
+export async function activate(context: ExtensionContext) {
+    // Check our hlint version.
+    const versionError = await checkHLintVersion();
+    if (versionError) {
+        vscode.window.showErrorMessage(versionError.message);
+        return;
+    }
+
     // Create a diagnostic collection to highlight HLint messages, and register
     // it to make sure it's disposed when the extension is disabled.
     const diagnostics = vscode.languages.createDiagnosticCollection("hlint");

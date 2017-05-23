@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+### Changed
+- Require HLint >=2.0.8 or HLint < 2 and >= 1.9.25
 
 ## 0.3.1 – 2017-05-22
 ### Added
