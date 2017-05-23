@@ -9,8 +9,9 @@ Lint Haskell code with [HLint][] in [Visual Studio Code][code].
 
 ## Prerequisites
 
-`hlint` must be available in `$PATH`.  I recommend version 2 or newer, older
-versions may or may not work.
+`hlint` **2.0.8** or newer must be available in `$PATH`. HLint 1.9.25 and
+upwards should work too, but I'm not testing it.  HLint 2.0.0 to 2.0.7 do
+**not** work—these versions can't read code from standard input.
 
 To apply suggestions `refactor` from [apply-refact][] must be in `$PATH` as
 well.
