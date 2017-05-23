@@ -2,7 +2,8 @@ language: node_js
 node_js:
   - "node"
 script:
-  # Lint my code
+  # Compile and lint code
+  - yarn run vscode:prepublish
   - yarn run lint
 cache:
   yarn: true
