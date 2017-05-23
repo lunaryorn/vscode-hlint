@@ -19,7 +19,7 @@ Versioning](http://semver.org/)!
 
 ## 0.2.0 - 2017-05-21
 ### Added
-- Apply suggestions from hlint (requires
+- Apply suggestions from HLint (requires
   [apply-refact](https://github.com/mpickering/apply-refact))
 
 ### Fixed

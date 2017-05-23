@@ -34,12 +34,12 @@ import {
 import * as vscode from "vscode";
 
 /**
- * An hlint severity.
+ * An HLint severity.
  */
-type HlintSeverity = "Ignore" | "Suggestion" | "Warning" | "Error";
+type HLintSeverity = "Ignore" | "Suggestion" | "Warning" | "Error";
 
 /**
- * Constant denoting diagnostics from hlint.
+ * Constant denoting diagnostics from HLint.
  */
 const HLINT_SOURCE = "hlint";
 
@@ -51,15 +51,15 @@ const commands = {
 };
 
 /**
- * An hlint message, as it appears in hlint's JSON output.
+ * An HLint message, as it appears in HLint's JSON output.
  */
-interface IHlintMessage {
+interface IHLintMessage {
     /** The module this message appeared in. */
     readonly module: string;
     /** The declaration the message appeared in. */
     readonly decl: string;
     /** The severity of this message. */
-    readonly severity: HlintSeverity;
+    readonly severity: HLintSeverity;
     /** The name of the hint that triggered this message. */
     readonly hint: string;
     /** The path to the file the message appeared in. */
@@ -83,14 +83,14 @@ interface IHlintMessage {
 }
 
 /**
- * Convert an hlint message severity to the corresponding VSCode diagnostic
+ * Convert an HLint message severity to the corresponding VSCode diagnostic
  * severity.
  *
- * @param hlintSeverity An hlint message severity as from hlint's JSON
+ * @param hlintSeverity An HLint message severity as from HLint's JSON
  * @return The corresponding severity
  */
 const toDiagnosticSeverity =
-    (hlintSeverity: HlintSeverity): DiagnosticSeverity => {
+    (hlintSeverity: HLintSeverity): DiagnosticSeverity => {
         switch (hlintSeverity) {
             case "Suggestion":
                 return DiagnosticSeverity.Hint;
@@ -109,7 +109,7 @@ const toDiagnosticSeverity =
  * @param hlintMessage An hlint message from hlint's JSON output
  * @return The corresponding diagnostic
  */
-const toDiagnostic = (hlintMessage: IHlintMessage): Diagnostic => {
+const toDiagnostic = (hlintMessage: IHLintMessage): Diagnostic => {
     // VSCode has zero-based positions, whereas hlint outputs 1-based line and
     // column numbers.  Hence adjust accordingly.
     const range = new Range(
@@ -130,11 +130,11 @@ const toDiagnostic = (hlintMessage: IHlintMessage): Diagnostic => {
 };
 
 /**
- * The context for hlint operations.
+ * The context for HLint operations.
  */
-interface IHlintContext {
+interface IHLintContext {
     /**
-     * The diagnostic collection for Hlint hints.
+     * The diagnostic collection for HLint hints.
      */
     readonly diagnostics: DiagnosticCollection;
 }
@@ -171,11 +171,11 @@ const runInWorkspace = (command: string[], stdin?: string): Promise<string> => {
 /**
  * Lint a single text document.
  *
- * @param hlint The context for hlint operations.
+ * @param hlint The context for HLint operations.
  * @param document The text document to lint
  */
 const lintDocument =
-    (hlint: IHlintContext) =>
+    (hlint: IHLintContext) =>
         async (document: TextDocument): Promise<void> => {
             if (document.isDirty || (!existsSync(document.fileName))) {
                 // Bail out if the document isn't saved or doesn't exist no disk
@@ -184,7 +184,7 @@ const lintDocument =
             try {
                 const output = await runInWorkspace(
                     ["hlint", "--no-exit-code", "--json", document.fileName]);
-                const messages = JSON.parse(output) as IHlintMessage[];
+                const messages = JSON.parse(output) as IHLintMessage[];
                 hlint.diagnostics.set(document.uri,
                     messages
                         .filter((message) => message.file === document.fileName)
@@ -196,15 +196,15 @@ const lintDocument =
         };
 
 /**
- * Provide commands to apply hlint suggestions.
+ * Provide commands to apply HLint suggestions.
  */
-class HlintRefactorings implements CodeActionProvider {
+class HLintRefactorings implements CodeActionProvider {
     public provideCodeActions(
         document: TextDocument,
         range: Range,
         context: CodeActionContext,
         token: CancellationToken): Command[] {
-        // Create a code action for every diagnostic from hlint that provides a
+        // Create a code action for every diagnostic from HLint that provides a
         // refactoring
         return context.diagnostics
             .filter((d) => d.source === HLINT_SOURCE && d.code)
@@ -224,13 +224,13 @@ class HlintRefactorings implements CodeActionProvider {
  * Call the "refactor" tool to apply the refactoring, and replace the document
  * contents with the refactored code.
  *
- * @param hlint The context for hlint operations
+ * @param hlint The context for HLint operations
  * @param document The text document that is being refactoring
  * @param refactoring The refactoring, as serialized structure for "refactor"
  * @return Whether the refactoring was applied or not
  */
 const applyRefactorings =
-    (hlint: IHlintContext) =>
+    (hlint: IHLintContext) =>
         async (
             document: TextDocument,
             refactorings: string): Promise<boolean> => {
@@ -263,17 +263,17 @@ const applyRefactorings =
  * @param context The context for this extension.
  */
 export function activate(context: ExtensionContext) {
-    // Create a diagnostic collection to highlight hlint messages, and register
+    // Create a diagnostic collection to highlight HLint messages, and register
     // it to make sure it's disposed when the extension is disabled.
     const diagnostics = vscode.languages.createDiagnosticCollection("hlint");
     context.subscriptions.push(diagnostics);
 
     const hlint = { diagnostics };
 
-    // Register code actions to apply hlint suggestions, and a corresponding
+    // Register code actions to apply HLint suggestions, and a corresponding
     // command.
     context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
-        "haskell", new HlintRefactorings()));
+        "haskell", new HLintRefactorings()));
     context.subscriptions.push(vscode.commands.registerCommand(
         commands.APPLY_REFACTORINGS, applyRefactorings(hlint)));
 
