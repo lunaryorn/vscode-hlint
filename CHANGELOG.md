@@ -11,6 +11,9 @@ Versioning](http://semver.org/)!
   feeds document contents to HLint on standard input which only works in the
   aforementioned versions.
 
+### Fixed
+- Only lint Haskell files.  I have simply forgotten this check 🙈
+
 ## 0.3.1 – 2017-05-22
 ### Added
 - Add more metadata for the marketplace side

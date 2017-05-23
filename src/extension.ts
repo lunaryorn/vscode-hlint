@@ -245,6 +245,10 @@ const MAX_RANGE = new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE);
 const lintDocument =
     (hlint: IHLintContext) =>
         async (document: TextDocument): Promise<void> => {
+            if (document.languageId !== "haskell") {
+                // Bail out if the document isn't Haskell code
+                return;
+            }
             try {
                 const output = await runInWorkspace(
                     ["hlint", "--no-exit-code", "--json", "-"],
