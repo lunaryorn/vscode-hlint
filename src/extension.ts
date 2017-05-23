@@ -138,28 +138,33 @@ interface IHlintContext {
 }
 
 /**
- * Run hlint on the given file and return all messages.
+ * Run a command in the current workspace.
  *
- * @param fileName The name of the file to run hlint on
+ * @param command The command to run.  The first element is the executable
+ * @param stdin Optional text to write to standard input
+ * @return The standard output of the command
  */
-const runHlint = (fileName: string): Promise<IHlintMessage[]> =>
-    new Promise<IHlintMessage[]>((resolve, reject) => {
+const runInWorkspace = (command: string[], stdin?: string): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
         const cwd = vscode.workspace.rootPath || process.cwd();
-        // Do not return a non-zero exit code when hints apply, so that
-        // "execFile" does not fail
-        execFile(
-            "hlint", ["--no-exit-code", "--json", fileName],
-            { cwd }, (error, stdout, stderr) => {
+        const child = execFile(command[0], command.slice(1),
+            (error, stdout, stderr) => {
                 if (error) {
-                    reject(new Error(
-                        `Failed to run hlint: ${error.message}`));
-                } else if (stderr.length > 0) {
-                    reject(new Error(`hslint failed: ${stderr}`));
+                    // tslint:disable-next-line:max-line-length
+                    const errorMessage =
+                        `Failed to run ${command}: ${error.message} (stderr: ${stderr})`;
+                    reject(new Error(errorMessage));
                 } else {
-                    resolve(JSON.parse(stdout));
+                    resolve(stdout);
                 }
             });
+        if (stdin) {
+            // Send standard input and close stdin stream to notify the child
+            // process
+            child.stdin.write(stdin, () => child.stdin.end());
+        }
     });
+};
 
 /**
  * Lint a single text document.
@@ -175,7 +180,9 @@ const lintDocument =
                 return;
             }
             try {
-                const messages = await runHlint(document.fileName);
+                const output = await runInWorkspace(
+                    ["hlint", "--no-exit-code", "--json", document.fileName]);
+                const messages = JSON.parse(output) as IHlintMessage[];
                 hlint.diagnostics.set(document.uri,
                     messages
                         .filter((message) => message.file === document.fileName)
@@ -210,32 +217,6 @@ class HlintRefactorings implements CodeActionProvider {
 }
 
 /**
- * Apply a refactoring on a given file.
- *
- * The file is refactoring in place.
- *
- * @param fileName The name of the file to refactor.
- * @param refactorings The refactorings to apply, as serialized string
- * @return The entire refactored code as string
- */
-const runRefactor = (fileName: string, refactorings: string): Promise<string> =>
-    new Promise<string>((resolve, reject) => {
-        const refactor = execFile("refactor", [fileName],
-            (error, stdout, stderr) => {
-                if (error) {
-                    reject(new Error(
-                        `Failed to run refactor: ${error.message}`));
-                } else {
-                    resolve(stdout);
-                }
-            });
-        // Feed refactoring description to refactor and close its standard input
-        // afterwards
-        refactor.stdin.write(`[("", ${refactorings})]`,
-            () => refactor.stdin.end());
-    });
-
-/**
  * Apply refactorings, used as command callback for a code action command.
  *
  * Call the "refactor" tool to apply the refactoring, and replace the document
@@ -257,8 +238,8 @@ const applyRefactorings =
             try {
                 // Hlint the document again after the refactoring was applied,
                 // to update the diagnostics.
-                const refactored = await runRefactor(
-                    document.fileName, refactorings);
+                const refactored = await runInWorkspace(
+                    ["refactor", document.fileName], `[("", ${refactorings})]`);
                 // Create and apply a text edit that replaces the whole document
                 // with the refactored code.
                 const wholeDocument = document.validateRange(
