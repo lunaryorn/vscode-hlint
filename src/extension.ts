@@ -17,9 +17,10 @@
 //
 
 import { execFile } from "child_process";
-import { existsSync } from "fs";
+import * as fs from "fs";
 
 import * as semver from "semver";
+import * as tmp from "tmp";
 
 import {
     CancellationToken,
@@ -172,6 +173,65 @@ const runInWorkspace = (command: string[], stdin?: string): Promise<string> => {
 };
 
 /**
+ * A temporary file.
+ */
+interface ITemporaryFile {
+    /**
+     * The path of the file.
+     */
+    readonly path: string;
+
+    /**
+     * Cleanup this temporary, i.e. delete it.
+     */
+    cleanup(): void;
+}
+
+/**
+ * Create a temporary file with the given contents.
+ *
+ * @param contents The contents of the file.
+ * @return The temporary file.
+ */
+const temporaryFile = (contents: string): Promise<ITemporaryFile> => {
+    return new Promise<ITemporaryFile>((resolve, reject) => {
+        tmp.file((err, path, fd, cleanup) => {
+            if (err) {
+                reject(err);
+            } else {
+                const sink = fs.createWriteStream("", { fd });
+                sink.end(contents, () => {
+                    resolve({ path, cleanup });
+                });
+            }
+        });
+    });
+};
+
+/**
+ * Refactor a piece of code with "refactor".
+ *
+ * @param code The code to refactor.
+ * @param refactorings A serialized description of the refactorings to apply
+ * @return The refactored code, or null if no refactoring was performed.
+ */
+const refactor =
+    async (code: string, refactorings: string): Promise<string | null> => {
+        const refactFile = await temporaryFile(refactorings);
+        try {
+            const refactoredCode = await runInWorkspace(
+                ["refactor", "--refact-file", refactFile.path], code);
+            if (0 < refactoredCode.length) {
+                return refactoredCode;
+            } else {
+                return null;
+            }
+        } finally {
+            refactFile.cleanup();
+        }
+    };
+
+/**
  * The maximum range, to refer to the whole document.
  */
 const MAX_RANGE = new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE);
@@ -237,31 +297,23 @@ class HLintRefactorings implements CodeActionProvider {
  * @param refactoring The refactoring, as serialized structure for "refactor"
  * @return Whether the refactoring was applied or not
  */
-const applyRefactorings =
-    (hlint: IHLintContext) =>
-        async (
-            document: TextDocument,
-            refactorings: string): Promise<boolean> => {
-            // Save the document and run "refactor" over it to apply the
-            // suggestion.
-            await document.save();
-            try {
-                // Hlint the document again after the refactoring was applied,
-                // to update the diagnostics.
-                const refactored = await runInWorkspace(
-                    ["refactor", document.fileName], `[("", ${refactorings})]`);
-                // Create and apply a text edit that replaces the whole document
-                // with the refactored code.
-                const edit = new WorkspaceEdit();
-                edit.replace(document.uri,
-                    document.validateRange(MAX_RANGE), // The whole document
-                    refactored);
-                return vscode.workspace.applyEdit(edit);
-            } catch (error) {
-                vscode.window.showErrorMessage(error.message);
-                return false;
-            }
-        };
+const applyRefactorings = (hlint: IHLintContext) =>
+    async (document: TextDocument, refactorings: string): Promise<boolean> => {
+        const refactoredCode = await refactor(
+            document.getText(MAX_RANGE), `[("", ${refactorings})]`);
+        if (refactoredCode) {
+            const edit = new WorkspaceEdit();
+            // Replace the whole document with the new refactored code.  Trim
+            // the last character from the refactored code because refactor
+            // seems to add an extra newline.
+            edit.replace(document.uri,
+                document.validateRange(MAX_RANGE),
+                refactoredCode.slice(0, -1));
+            return vscode.workspace.applyEdit(edit);
+        } else {
+            return false;
+        }
+    };
 
 /**
  * HLint version required for this extension.
