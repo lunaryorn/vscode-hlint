@@ -172,6 +172,11 @@ const runInWorkspace = (command: string[], stdin?: string): Promise<string> => {
 };
 
 /**
+ * The maximum range, to refer to the whole document.
+ */
+const MAX_RANGE = new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE);
+
+/**
  * Lint a single text document.
  *
  * @param hlint The context for HLint operations.
@@ -180,18 +185,18 @@ const runInWorkspace = (command: string[], stdin?: string): Promise<string> => {
 const lintDocument =
     (hlint: IHLintContext) =>
         async (document: TextDocument): Promise<void> => {
-            if (document.isDirty || (!existsSync(document.fileName))) {
-                // Bail out if the document isn't saved or doesn't exist no disk
-                return;
-            }
             try {
                 const output = await runInWorkspace(
-                    ["hlint", "--no-exit-code", "--json", document.fileName]);
+                    ["hlint", "--no-exit-code", "--json", "-"],
+                    document.getText(MAX_RANGE));
                 const messages = JSON.parse(output) as IHLintMessage[];
-                hlint.diagnostics.set(document.uri,
-                    messages
-                        .filter((message) => message.file === document.fileName)
-                        .map(toDiagnostic));
+                // Parse all messages and take only those that refer to the
+                // stdin file, to make sure that we don't highlight errors from
+                // other files in the linted document.
+                const diagnostics = messages
+                    .filter((message) => message.file === "-")
+                    .map(toDiagnostic);
+                hlint.diagnostics.set(document.uri, diagnostics);
             } catch (error) {
                 hlint.diagnostics.delete(document.uri);
                 vscode.window.showErrorMessage(error.message);
@@ -247,10 +252,10 @@ const applyRefactorings =
                     ["refactor", document.fileName], `[("", ${refactorings})]`);
                 // Create and apply a text edit that replaces the whole document
                 // with the refactored code.
-                const wholeDocument = document.validateRange(
-                    new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE));
                 const edit = new WorkspaceEdit();
-                edit.replace(document.uri, wholeDocument, refactored);
+                edit.replace(document.uri,
+                    document.validateRange(MAX_RANGE), // The whole document
+                    refactored);
                 return vscode.workspace.applyEdit(edit);
             } catch (error) {
                 vscode.window.showErrorMessage(error.message);
