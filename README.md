@@ -9,7 +9,7 @@ Lint Haskell code with [HLint][] in [Visual Studio Code][code].
 
 ## Prerequisites
 
-`hlint` **2.0.8** or newer must be available in `$PATH`. HLint 1.9.25 and
+`hlint` **2.0.8** or newer must be available in `$PATH`.  HLint 1.9.25 and
 upwards should work too, but I'm not testing it.  HLint 2.0.0 to 2.0.7 do
 **not** work—these versions can't read code from standard input.
 
@@ -49,7 +49,7 @@ when the document is saved which suits me just fine :)
 
 ## License
 
-Copyright (C) 2017  Sebastian Wiesner <swiesner@lunaryorn.com>
+Copyright © 2017  Sebastian Wiesner <swiesner@lunaryorn.com>
 
 vscode-hlint is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

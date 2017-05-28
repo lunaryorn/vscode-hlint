@@ -12,7 +12,7 @@ Versioning](http://semver.org/)!
   aforementioned versions.
 
 ### Fixed
-- Only lint Haskell files.  I have simply forgotten this check 🙈
+- Only lint Haskell files.  I simply forgot this check 🙈
 
 ## 0.3.1 – 2017-05-22
 ### Added
