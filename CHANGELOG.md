@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+
+## 0.3.2 – 2017-05-28
 ### Changed
 - Require HLint >=2.0.8 or HLint < 2 and >= 1.9.25 because the extension now
   feeds document contents to HLint on standard input which only works in the
