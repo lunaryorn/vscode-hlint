@@ -8,7 +8,12 @@
         ],
         "sourceMap": true,
         "rootDir": ".",
-        "strict": true
+        "strict": true,
+        "plugins": [
+            {
+                "name": "tslint-language-service"
+            }
+        ]
     },
     "exclude": [
         "node_modules",
