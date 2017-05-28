@@ -153,7 +153,7 @@ interface IHLintContext {
 const runInWorkspace = (command: string[], stdin?: string): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
         const cwd = vscode.workspace.rootPath || process.cwd();
-        const child = execFile(command[0], command.slice(1),
+        const child = execFile(command[0], command.slice(1), { cwd },
             (error, stdout, stderr) => {
                 if (error) {
                     // tslint:disable-next-line:max-line-length
@@ -275,9 +275,9 @@ const lintDocument =
 class HLintRefactorings implements CodeActionProvider {
     public provideCodeActions(
         document: TextDocument,
-        range: Range,
+        _range: Range,
         context: CodeActionContext,
-        token: CancellationToken): Command[] {
+        _token: CancellationToken): Command[] {
         // Create a code action for every diagnostic from HLint that provides a
         // refactoring
         return context.diagnostics
@@ -298,26 +298,25 @@ class HLintRefactorings implements CodeActionProvider {
  * Call the "refactor" tool to apply the refactoring, and replace the document
  * contents with the refactored code.
  *
- * @param hlint The context for HLint operations
  * @param document The text document that is being refactoring
  * @param refactoring The refactoring, as serialized structure for "refactor"
  * @return Whether the refactoring was applied or not
  */
-const applyRefactorings = (hlint: IHLintContext) =>
+const applyRefactorings =
     async (document: TextDocument, refactorings: string): Promise<boolean> => {
         try {
-        const refactoredCode = await refactor(
-            document.getText(MAX_RANGE), `[("", ${refactorings})]`);
-        if (refactoredCode) {
-            const edit = new WorkspaceEdit();
+            const refactoredCode = await refactor(
+                document.getText(MAX_RANGE), `[("", ${refactorings})]`);
+            if (refactoredCode) {
+                const edit = new WorkspaceEdit();
                 // Replace the whole document with the new refactored code.
-            edit.replace(document.uri,
-                document.validateRange(MAX_RANGE),
+                edit.replace(document.uri,
+                    document.validateRange(MAX_RANGE),
                     refactoredCode);
-            return vscode.workspace.applyEdit(edit);
-        } else {
-            return false;
-        }
+                return vscode.workspace.applyEdit(edit);
+            } else {
+                return false;
+            }
         } catch (err) {
             vscode.window.showErrorMessage(
                 `Failed to refactor hlint suggestions: ${err.message}`);
@@ -407,7 +406,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
         "haskell", new HLintRefactorings()));
     context.subscriptions.push(vscode.commands.registerCommand(
-        commands.APPLY_REFACTORINGS, applyRefactorings(hlint)));
+        commands.APPLY_REFACTORINGS, applyRefactorings));
 
     // Lint all open documents
     vscode.workspace.textDocuments.forEach(lintDocument(hlint));
