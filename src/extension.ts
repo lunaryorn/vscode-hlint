@@ -222,7 +222,9 @@ const refactor =
             const refactoredCode = await runInWorkspace(
                 ["refactor", "--refact-file", refactFile.path], code);
             if (0 < refactoredCode.length) {
-                return refactoredCode;
+                // Trim the last character from the refactored code because
+                // refactor seems to add an extra newline.
+                return refactoredCode.slice(0, -1);
             } else {
                 return null;
             }
@@ -309,11 +311,9 @@ const applyRefactorings = (hlint: IHLintContext) =>
         if (refactoredCode) {
             const edit = new WorkspaceEdit();
                 // Replace the whole document with the new refactored code.
-                // Trim the last character from the refactored code because
-                // refactor seems to add an extra newline.
             edit.replace(document.uri,
                 document.validateRange(MAX_RANGE),
-                refactoredCode.slice(0, -1));
+                    refactoredCode);
             return vscode.workspace.applyEdit(edit);
         } else {
             return false;
@@ -392,14 +392,7 @@ export async function activate(context: ExtensionContext) {
 
     const hlint = { diagnostics };
 
-    // Register code actions to apply HLint suggestions, and a corresponding
-    // command.
-    context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
-        "haskell", new HLintRefactorings()));
-    context.subscriptions.push(vscode.commands.registerCommand(
-        commands.APPLY_REFACTORINGS, applyRefactorings(hlint)));
-
-    // Start linting documents when they are saved or freshly opened
+    // Setup linting on save and open.
     vscode.workspace.onDidSaveTextDocument(
         lintDocument(hlint), null, context.subscriptions);
     vscode.workspace.onDidOpenTextDocument(
@@ -408,6 +401,13 @@ export async function activate(context: ExtensionContext) {
     vscode.workspace.onDidCloseTextDocument((document) => {
         diagnostics.delete(document.uri);
     }, null, context.subscriptions);
+
+    // Register code actions to apply HLint suggestions, and a corresponding
+    // command.
+    context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
+        "haskell", new HLintRefactorings()));
+    context.subscriptions.push(vscode.commands.registerCommand(
+        commands.APPLY_REFACTORINGS, applyRefactorings(hlint)));
 
     // Lint all open documents
     vscode.workspace.textDocuments.forEach(lintDocument(hlint));
