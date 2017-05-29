@@ -2,9 +2,8 @@ language: node_js
 node_js:
   - "node"
 script:
-  # Compile and lint code
+  # Compile code
   - yarn run vscode:prepublish
-  - yarn run lint
 cache:
   yarn: true
 # Don't send mails, I'm using ccmenu
