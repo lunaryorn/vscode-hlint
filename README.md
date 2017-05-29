@@ -32,8 +32,6 @@ In some cases HLint can automatically fix issues.  In these cases a [code action
 
 I wrote this extension because the above does not currently work with HLint 2, and I found the implementation overly verbose and clumsy when trying to address the issue.  If I may say this extension has the better code: Less mutable state, much simpler implementation, and better documentation :blush:  It also uses `refactor` to apply HLint suggestions instead of text replacement.
 
-On the other hand this extension doesn't lint while you're typing, but only when the document is saved which suits me just fine :)
-
 ## License
 
 Copyright © 2017  Sebastian Wiesner <swiesner@lunaryorn.com>

@@ -331,15 +331,15 @@ ${HLINT_VERSION_REQUIREMENT}! Please install the latest hlint version from Stack
     }
 };
 
-type TextDocumentEvent =
-    (handler: (document: TextDocument) => void) => Disposable;
+type Event<T> =
+    (handler: (document: T) => void) => Disposable;
 
-const observeDocumentEvent =
-    (event: TextDocumentEvent): Observable<TextDocument> =>
+const observeEvent =
+    <T>(event: Event<T>): Observable<T> =>
         Observable.fromEventPattern(
             (handler) => event((d) => handler(d)),
             (_: any, subscription: Disposable) => subscription.dispose(),
-            (d) => d as TextDocument,
+            (d) => d as T,
         );
 
 interface IHLintResult {
@@ -390,8 +390,10 @@ export async function activate(context: ExtensionContext) {
     // or saved.  Only lint each document once in 200ms to avoid flooding the
     // system with too many hlint process.
     const linting = Observable.from(vscode.workspace.textDocuments)
-        .merge(observeDocumentEvent(vscode.workspace.onDidOpenTextDocument))
-        .merge(observeDocumentEvent(vscode.workspace.onDidSaveTextDocument))
+        .merge(observeEvent(vscode.workspace.onDidOpenTextDocument))
+        .merge(observeEvent(vscode.workspace.onDidSaveTextDocument))
+        .merge(observeEvent(vscode.workspace.onDidChangeTextDocument)
+            .map(({ document }) => document))
         .filter((document) => document.languageId === "haskell")
         .groupBy((document) => document.uri)
         .map((events) => events.throttleTime(200))
@@ -413,9 +415,8 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push({ dispose: linting.unsubscribe });
 
     // Remove diagnostics whenever a document is closed.
-    const cleanup =
-        observeDocumentEvent(vscode.workspace.onDidCloseTextDocument)
-            .subscribe((document) => diagnostics.delete(document.uri));
+    const cleanup = observeEvent(vscode.workspace.onDidCloseTextDocument)
+        .subscribe((document) => diagnostics.delete(document.uri));
     context.subscriptions.push({ dispose: cleanup.unsubscribe });
 
     // Register code actions to apply HLint suggestions, and a corresponding

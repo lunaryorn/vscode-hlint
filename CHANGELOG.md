@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+### Added
+- Lint documents on the fly when changed
 
 ## 0.3.2 – 2017-05-28
 ### Changed
