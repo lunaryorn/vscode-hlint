@@ -331,9 +331,18 @@ ${HLINT_VERSION_REQUIREMENT}! Please install the latest hlint version from Stack
     }
 };
 
+/**
+ * An event that can be subscribed to.
+ */
 type Event<T> =
     (handler: (document: T) => void) => Disposable;
 
+/**
+ * Observe a vscode event.
+ *
+ * @param event The event to observe
+ * @return An observable which pushes every event
+ */
 const observeEvent =
     <T>(event: Event<T>): Observable<T> =>
         Observable.fromEventPattern(
@@ -342,6 +351,9 @@ const observeEvent =
             (d) => d as T,
         );
 
+/**
+ * The result of an HLint run.
+ */
 interface IHLintResult {
     /**
      * The linted document.
