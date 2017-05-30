@@ -366,6 +366,10 @@ const HLINT_VERSION_REQUIREMENT = ">=2.0.8 || <2 >=1.9.25";
  */
 const getHLintVersion = () => {
     return Observable.fromPromise(runInWorkspace(["hlint", "--version"]))
+        .catch((error): Observable<string> => {
+            // Wrap error if hlint failed to run.
+            throw new HLintVersionError(`Failed to run HLint: ${error}`);
+        })
         .map((stdout) => {
             const matches = stdout.match(/^HLint v([^,]+),/);
             if (matches && matches.length === 2) {
@@ -453,18 +457,11 @@ const startLinting = (context: ExtensionContext): void => {
  *
  * @param context The context for this extension.
  */
-export function activate(context: ExtensionContext) {
-    getHLintVersion().subscribe(
-        (version) => {
-            console.log("Found HLint version", version);
+export function activate(context: ExtensionContext): Promise<any> {
+    return getHLintVersion()
+        .do((version) => {
+            console.log("lunaryorn.hlint: Found HLint version", version);
             registerProvidersAndCommands(context);
             startLinting(context);
-        },
-        (error) => {
-            if (error instanceof Error) {
-                vscode.window.showErrorMessage(error.message);
-            } else {
-                vscode.window.showErrorMessage(error.toString);
-            }
-        });
+        }).toPromise();
 }
