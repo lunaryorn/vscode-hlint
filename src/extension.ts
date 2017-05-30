@@ -287,55 +287,9 @@ const applyRefactorings =
     };
 
 /**
- * HLint version required for this extension.
- *
- * We require either 2.0.8 or newer as it adds back stdin support, or version
- * 1.9.25 (which fixes stdin support and refactor integration) or newer and less
- * than version 2 (as version 2 removes stdin support).
- */
-const HLINT_VERSION_REQUIREMENT = ">=2.0.8 || <2 >=1.9.25";
-
-/**
- * An HLint version error.
- */
-interface IHLintVersionError {
-    /**
-     * The human-readable error message.
-     */
-    readonly message: string;
-}
-
-/**
- * Check hlint version.
- *
- * @returns Either a version error or null if the version is fine.
- */
-const checkHLintVersion = async (): Promise<IHLintVersionError | null> => {
-    const stdout = await runInWorkspace(["hlint", "--version"]);
-    const match = stdout.match(/^HLint v([^,]+),/);
-    if (match && 2 <= match.length) {
-        const hlintVersion = match[1];
-        if (semver.satisfies(hlintVersion, HLINT_VERSION_REQUIREMENT)) {
-            return null; // The version is fine.
-        } else {
-            return {
-                // tslint:disable-next-line:max-line-length
-                message: `HLint version ${hlintVersion} did not meet requirements: \
-${HLINT_VERSION_REQUIREMENT}! Please install the latest hlint version from Stackage or Hackage.`,
-            };
-        }
-    } else {
-        return {
-            message: `Failed to parse HLint version from output: ${stdout}`,
-        };
-    }
-};
-
-/**
  * An event that can be subscribed to.
  */
-type Event<T> =
-    (handler: (document: T) => void) => Disposable;
+type Event<T> = (handler: (document: T) => void) => Disposable;
 
 /**
  * Observe a vscode event.
@@ -343,13 +297,12 @@ type Event<T> =
  * @param event The event to observe
  * @return An observable which pushes every event
  */
-const observeEvent =
-    <T>(event: Event<T>): Observable<T> =>
-        Observable.fromEventPattern(
-            (handler) => event((d) => handler(d)),
-            (_: any, subscription: Disposable) => subscription.dispose(),
-            (d) => d as T,
-        );
+const observeEvent = <T>(event: Event<T>): Observable<T> =>
+    Observable.fromEventPattern(
+        (handler) => event((d) => handler(d)),
+        (_: any, subscription: Disposable) => subscription.dispose(),
+        (d) => d as T,
+    );
 
 /**
  * The result of an HLint run.
@@ -379,20 +332,78 @@ const lintDocument = (document: TextDocument): Observable<IHLintResult> => {
 };
 
 /**
- * Activate this extension.
- *
- * VSCode invokes this entry point whenever this extension is activated.
- *
- * @param context The context for this extension.
+ * An HLint version error.
  */
-export async function activate(context: ExtensionContext) {
-    // Check our hlint version.
-    const versionError = await checkHLintVersion();
-    if (versionError) {
-        vscode.window.showErrorMessage(versionError.message);
-        return;
+class HLintVersionError extends Error {
+    /**
+     * Create a new version error.
+     *
+     * @param message The error message
+     */
+    constructor(message: string) {
+        super(message);
+        this.name = "HLintVersionError";
     }
+}
 
+/**
+ * HLint version required for this extension.
+ *
+ * We require either 2.0.8 or newer as it adds back stdin support, or version
+ * 1.9.25 (which fixes stdin support and refactor integration) or newer and less
+ * than version 2 (as version 2 removes stdin support).
+ */
+const HLINT_VERSION_REQUIREMENT = ">=2.0.8 || <2 >=1.9.25";
+
+/**
+ * Get the HLint version.
+ *
+ * @return An observable that provides the version or fails if the version is
+ *         missing or doesn't meet the requirements.
+ */
+const getHLintVersion = () => {
+    return Observable.fromPromise(runInWorkspace(["hlint", "--version"]))
+        .map((stdout) => {
+            const matches = stdout.match(/^HLint v([^,]+),/);
+            if (matches && matches.length === 2) {
+                return matches[1];
+            } else {
+                throw new HLintVersionError(
+                    `Failed to parse HLint version from output: ${stdout}`);
+            }
+        })
+        .map((version) => {
+            if (semver.satisfies(version, HLINT_VERSION_REQUIREMENT)) {
+                return version;
+            } else {
+                throw new HLintVersionError(
+                    // tslint:disable-next-line:max-line-length
+                    `HLint version ${version} did not meet requirements: \
+${HLINT_VERSION_REQUIREMENT}! Please install the latest hlint version from Stackage or Hackage.`);
+            }
+        });
+};
+
+/**
+ * Register providers and commands.
+ *
+ * @param context The extension context
+ */
+const registerProvidersAndCommands = (context: ExtensionContext): void => {
+    // Register code actions to apply HLint suggestions, and a corresponding
+    // command.
+    context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
+        "haskell", new HLintRefactorings()));
+    context.subscriptions.push(vscode.commands.registerCommand(
+        commands.APPLY_REFACTORINGS, applyRefactorings));
+};
+
+/**
+ * Start linting with HLint.
+ *
+ * @param context The extension context
+ */
+const startLinting = (context: ExtensionContext): void => {
     // Create a diagnostic collection to highlight HLint messages, and register
     // it to make sure it's disposed when the extension is disabled.
     const diagnostics = vscode.languages.createDiagnosticCollection("hlint");
@@ -430,11 +441,27 @@ export async function activate(context: ExtensionContext) {
     const cleanup = observeEvent(vscode.workspace.onDidCloseTextDocument)
         .subscribe((document) => diagnostics.delete(document.uri));
     context.subscriptions.push({ dispose: cleanup.unsubscribe });
+};
 
-    // Register code actions to apply HLint suggestions, and a corresponding
-    // command.
-    context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
-        "haskell", new HLintRefactorings()));
-    context.subscriptions.push(vscode.commands.registerCommand(
-        commands.APPLY_REFACTORINGS, applyRefactorings));
+/**
+ * Activate this extension.
+ *
+ * VSCode invokes this entry point whenever this extension is activated.
+ *
+ * @param context The context for this extension.
+ */
+export function activate(context: ExtensionContext) {
+    getHLintVersion().subscribe(
+        (version) => {
+            console.log("Found HLint version", version);
+            registerProvidersAndCommands(context);
+            startLinting(context);
+        },
+        (error) => {
+            if (error instanceof Error) {
+                vscode.window.showErrorMessage(error.message);
+            } else {
+                vscode.window.showErrorMessage(error.toString);
+            }
+        });
 }
