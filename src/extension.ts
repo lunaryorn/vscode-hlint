@@ -430,7 +430,7 @@ const startLinting = (context: ExtensionContext): void => {
         .mergeAll()
         .map((document) => lintDocument(document)
             .catch((err) => {
-                // If an error occurs while lintint show the error message,
+                // If an error occurs while linting show the error message,
                 // delete past diagnostics for the document and continue with an
                 // empty promise.
                 vscode.window.showErrorMessage(err.toString());
