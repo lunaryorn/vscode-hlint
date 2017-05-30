@@ -9,6 +9,10 @@ Versioning](http://semver.org/)!
 ### Added
 - Lint documents on the fly when changed
 
+### Changed
+- The extension now fails to activate if HLint is not present or if the HLint
+  version does not meet the requirements of this extension (see below).
+
 ## 0.3.2 – 2017-05-28
 ### Changed
 - Require HLint >=2.0.8 or HLint < 2 and >= 1.9.25 because the extension now
