@@ -28,7 +28,6 @@ import * as tmp from "tmp";
 import {
     CancellationToken,
     CodeActionContext,
-    CodeActionProvider,
     Command,
     Diagnostic,
     DiagnosticSeverity,
@@ -192,8 +191,7 @@ const temporaryFile = (contents: string): Promise<ITemporaryFile> => {
             if (err) {
                 reject(err);
             } else {
-                const sink = fs.createWriteStream("", { fd });
-                sink.end(contents, () => {
+                fs.createWriteStream("", { fd }).end(contents, () => {
                     resolve({ path, cleanup });
                 });
             }
@@ -232,27 +230,32 @@ const refactor =
 const MAX_RANGE = new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE);
 
 /**
- * Provide commands to apply HLint suggestions.
+ * Provide code actions to apply HLint suggestions.
+ *
+ * Create a code action for every HLint diagnostic in context that provides a
+ * refactoring.
+ *
+ * @param document The document for which to provide actions
+ * @param _range Ignored
+ * @param context The context for which to provide actions
+ * @param _token Ignored
+ * @return A list of commands that apply code actions
  */
-class HLintRefactorings implements CodeActionProvider {
-    public provideCodeActions(
-        document: TextDocument,
-        _range: Range,
-        context: CodeActionContext,
-        _token: CancellationToken): Command[] {
-        // Create a code action for every diagnostic from HLint that provides a
-        // refactoring
-        return context.diagnostics
-            .filter((d) => d.source === HLINT_SOURCE && d.code)
-            .map((diagnostic) => {
-                return {
-                    arguments: [document, diagnostic.code],
-                    command: commands.APPLY_REFACTORINGS,
-                    title: `Fix: ${diagnostic.message}`,
-                };
-            });
-    }
-}
+const provideHLintCodeActions = (
+    document: TextDocument,
+    _range: Range, context:
+        CodeActionContext,
+    _token: CancellationToken,
+): Command[] =>
+    context.diagnostics
+        .filter((d) => d.source === HLINT_SOURCE && d.code)
+        .map((diagnostic) => {
+            return {
+                arguments: [document, diagnostic.code],
+                command: commands.APPLY_REFACTORINGS,
+                title: `Fix: ${diagnostic.message}`,
+            };
+        });
 
 /**
  * Apply refactorings, used as command callback for a code action command.
@@ -268,7 +271,7 @@ const applyRefactorings =
     async (document: TextDocument, refactorings: string): Promise<boolean> => {
         try {
             const refactoredCode = await refactor(
-                document.getText(MAX_RANGE), `[("", ${refactorings})]`);
+                document.getText(), `[("", ${refactorings})]`);
             if (refactoredCode) {
                 const edit = new WorkspaceEdit();
                 // Replace the whole document with the new refactored code.
@@ -393,7 +396,7 @@ const registerProvidersAndCommands = (context: ExtensionContext): void => {
     // Register code actions to apply HLint suggestions, and a corresponding
     // command.
     context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
-        "haskell", new HLintRefactorings()));
+        "haskell", { provideCodeActions: provideHLintCodeActions }));
     context.subscriptions.push(vscode.commands.registerCommand(
         commands.APPLY_REFACTORINGS, applyRefactorings));
 };
