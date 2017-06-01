@@ -482,7 +482,7 @@ export function activate(context: ExtensionContext): Promise<any> {
         "HLint", ["hlint", "--version"],
         /^HLint v([^,]+),/, VERSION_RANGES.hlint,
     ).do((version) => {
-        console.info("lunaryorn.hlint: Found HLint version", version,
+        console.info("lunaryorn.hlint: found HLint version", version,
             "starting to lint documents");
         startLinting(context);
     });
