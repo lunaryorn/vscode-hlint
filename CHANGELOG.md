@@ -12,6 +12,8 @@ Versioning](http://semver.org/)!
 ### Changed
 - The extension now fails to activate if HLint is not present or if the HLint
   version does not meet the requirements of this extension (see below).
+- Do not provide code actions (e.g. the light bulb) if `apply-refact` is not
+  installed or doesn't have the expected version (see README).
 
 ## 0.3.2 – 2017-05-28
 ### Changed

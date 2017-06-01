@@ -335,9 +335,9 @@ const lintDocument = (document: TextDocument): Observable<IHLintResult> => {
 };
 
 /**
- * An HLint version error.
+ * An error denoting a mismatched version.
  */
-class HLintVersionError extends Error {
+class VersionError extends Error {
     /**
      * Create a new version error.
      *
@@ -345,65 +345,71 @@ class HLintVersionError extends Error {
      */
     constructor(message: string) {
         super(message);
-        this.name = "HLintVersionError";
+        this.name = "VersionError";
     }
 }
 
 /**
- * HLint version required for this extension.
+ * Get the expected version of a program.
  *
- * We require either 2.0.8 or newer as it adds back stdin support, or version
- * 1.9.25 (which fixes stdin support and refactor integration) or newer and less
- * than version 2 (as version 2 removes stdin support).
- */
-const HLINT_VERSION_REQUIREMENT = ">=2.0.8 || <2 >=1.9.25";
-
-/**
- * Get the HLint version.
+ * Run the given command and try to parse the version number from standard
+ * output, using the first match group of the provided regular expression
+ * pattern.
  *
- * @return An observable that provides the version or fails if the version is
- *         missing or doesn't meet the requirements.
+ * Then compare the version against the given semantic versioning range (in npm
+ * syntax) and return an observable pushing the version if it meets the
+ * requirements.
+ *
+ * If the regular expression didn't match or if the version didn't meet the
+ * provided range, the observable fails with a VersionError.
+ *
+ * If the command failed to execute for whatever reason the observable fails
+ * with a NodeJS system error.
+ *
+ * @param program The human-readable program name, for error messages
+ * @param command The command to run to get the version
+ * @param pattern A regular expression to extract the version from the output
+ * @param range A semver version range specifying the expected version
+ * @return An observable with the extracted version
  */
-const getHLintVersion = () => {
-    return Observable.fromPromise(runInWorkspace(["hlint", "--version"]))
-        .catch((error): Observable<string> => {
-            // Wrap error if hlint failed to run.
-            throw new HLintVersionError(`Failed to run HLint: ${error}`);
-        })
-        .map((stdout) => {
-            const matches = stdout.match(/^HLint v([^,]+),/);
-            if (matches && matches.length === 2) {
-                return matches[1];
-            } else {
-                throw new HLintVersionError(
-                    `Failed to parse HLint version from output: ${stdout}`);
-            }
-        })
-        .map((version) => {
-            if (semver.satisfies(version, HLINT_VERSION_REQUIREMENT)) {
+const getExpectedVersion = (
+    program: string,
+    command: string[],
+    pattern: RegExp,
+    range: string,
+): Observable<string> => Observable.fromPromise(runInWorkspace(command))
+    .map((stdout) => {
+        const matches = stdout.match(pattern);
+        if (matches && matches.length === 2) {
+            const version = matches[1];
+            // Compare ranges loosely since we might not get a totally valid
+            // semantic version from the program
+            if (semver.satisfies(version, range, true)) {
                 return version;
             } else {
-                throw new HLintVersionError(
-                    // tslint:disable-next-line:max-line-length
-                    `HLint version ${version} did not meet requirements: \
-${HLINT_VERSION_REQUIREMENT}! Please install the latest hlint version from Stackage or Hackage.`);
+                // tslint:disable-next-line:max-line-length
+                throw new VersionError(`${program} version ${version} did not meet requirements ${range}`);
             }
-        });
-};
+        } else {
+            throw new VersionError(
+                `Failed to extract ${program} version from ${stdout}`);
+        }
+    });
 
 /**
  * Register providers and commands.
  *
  * @param context The extension context
  */
-const registerProvidersAndCommands = (context: ExtensionContext): void => {
-    // Register code actions to apply HLint suggestions, and a corresponding
-    // command.
-    context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
-        "haskell", { provideCodeActions: provideHLintCodeActions }));
-    context.subscriptions.push(vscode.commands.registerCommand(
-        commands.APPLY_REFACTORINGS, applyRefactorings));
-};
+const registerRefactoringProvidersAndCommands =
+    (context: ExtensionContext): void => {
+        // Register code actions to apply HLint suggestions, and a corresponding
+        // command.
+        context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
+            "haskell", { provideCodeActions: provideHLintCodeActions }));
+        context.subscriptions.push(vscode.commands.registerCommand(
+            commands.APPLY_REFACTORINGS, applyRefactorings));
+    };
 
 /**
  * Start linting with HLint.
@@ -451,6 +457,18 @@ const startLinting = (context: ExtensionContext): void => {
 };
 
 /**
+ * Version ranges required by this extension.
+ *
+ * We require either HLint 2.0.8 or newer as it adds back stdin support, or
+ * version 1.9.25 (which fixes stdin support and refactor integration) or newer
+ * and less than version 2 (as version 2 removes stdin support).
+ */
+const VERSION_RANGES = {
+    applyRefact: ">= 0.3",
+    hlint: ">=2.0.8 || <2 >=1.9.25",
+};
+
+/**
  * Activate this extension.
  *
  * VSCode invokes this entry point whenever this extension is activated.
@@ -458,10 +476,44 @@ const startLinting = (context: ExtensionContext): void => {
  * @param context The context for this extension.
  */
 export function activate(context: ExtensionContext): Promise<any> {
-    return getHLintVersion()
-        .do((version) => {
-            console.log("lunaryorn.hlint: Found HLint version", version);
-            registerProvidersAndCommands(context);
-            startLinting(context);
-        }).toPromise();
+    // Enable linting with HLint or fail if it's missing or doesn't meet our
+    // requirements
+    const enableLinting = getExpectedVersion(
+        "HLint", ["hlint", "--version"],
+        /^HLint v([^,]+),/, VERSION_RANGES.hlint,
+    ).do((version) => {
+        console.info("lunaryorn.hlint: Found HLint version", version,
+            "starting to lint documents");
+        startLinting(context);
+    });
+    // Enable refactoring actions with apply-refact.  If it's missing or doesn't
+    // meet our requirements show a warning messages and do not register the
+    // corresponding commands and code action providers, but do not fail.
+    //
+    // apply-refact has a four-component which is not a valid semantic version
+    // (these have at most three components).  To work around this we explicitly
+    // extract just the first three components of the refactor version number.
+    const enableRefactoring = getExpectedVersion(
+        "apply-refact", ["refactor", "--version"],
+        /^v(\d+\.\d+\.\d+)/, VERSION_RANGES.applyRefact,
+    ).catch((error) => {
+        if (error instanceof VersionError) {
+            vscode.window.showWarningMessage(
+                `HLint suggestions not available: ${error.message}`);
+            return Observable.empty();
+        } else if (error.code === "ENOENT") {
+            vscode.window.showErrorMessage(
+                `HLint suggestions not available: apply-refact missing, \
+please install the latest release from Hackage or Stackage`);
+            return Observable.empty();
+        } else {
+            throw error;
+        }
+    }).do((version) => {
+        console.info("lunaryorn.hlint: found apply-refact version", version,
+            "registering refactoring commands and providers");
+        registerRefactoringProvidersAndCommands(context);
+    });
+
+    return Observable.concat(enableLinting, enableRefactoring).toPromise();
 }

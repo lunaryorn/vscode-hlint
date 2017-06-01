@@ -11,7 +11,7 @@ Lint Haskell code with [HLint][] in [Visual Studio Code][code].
 
 `hlint` **2.0.8** or newer must be available in `$PATH`.  HLint 1.9.25 and upwards should work too, but I'm not testing it.  HLint 2.0.0 to 2.0.7 do **not** work—these versions can't read code from standard input.
 
-To apply suggestions `refactor` from [apply-refact][] must be in `$PATH` as well.
+To apply suggestions `refactor` from [apply-refact][] 0.3 or newer must be in `$PATH`.  If it's missing you'll see a warning message and the light bulb feature won't be available for HLint suggestions, but linting will continue to work just fine.
 
 [apply-refact]: https://github.com/mpickering/apply-refact
 
