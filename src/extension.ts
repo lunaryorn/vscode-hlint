@@ -219,11 +219,6 @@ const refactor =
             });
 
 /**
- * The maximum range, to refer to the whole document.
- */
-const MAX_RANGE = new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE);
-
-/**
  * Provide code actions to apply HLint suggestions.
  *
  * Create a code action for every HLint diagnostic in context that provides a
@@ -274,7 +269,8 @@ const applyRefactorings =
                 const edit = new WorkspaceEdit();
                 // Replace the whole document with the new refactored code.
                 edit.replace(document.uri,
-                    document.validateRange(MAX_RANGE),
+                    document.validateRange(new Range(
+                        0, 0, Number.MAX_VALUE, Number.MAX_VALUE)),
                     // Code's not null here, because we filtered accordingly
                     // above
                     code!);
@@ -284,24 +280,6 @@ const applyRefactorings =
                 vscode.workspace.applyEdit(edit)))
             .defaultIfEmpty(false)
             .toPromise();
-
-/**
- * An event that can be subscribed to.
- */
-type Event<T> = (handler: (document: T) => void) => Disposable;
-
-/**
- * Observe a vscode event.
- *
- * @param event The event to observe
- * @return An observable which pushes every event
- */
-const observeEvent = <T>(event: Event<T>): Observable<T> =>
-    Observable.fromEventPattern(
-        (handler) => event((d) => handler(d)),
-        (_: any, subscription: Disposable) => subscription.dispose(),
-        (d) => d as T,
-    );
 
 /**
  * The result of an HLint run.
@@ -328,6 +306,84 @@ const lintDocument = (document: TextDocument): Observable<IHLintResult> => {
     const cmd = ["hlint", "--no-exit-code", "--json", "-"];
     return runInWorkspace(cmd, document.getText())
         .map((stdout) => ({ document, messages: JSON.parse(stdout) }));
+};
+
+/**
+ * An event that can be subscribed to.
+ */
+type Event<T> = (handler: (document: T) => void) => Disposable;
+
+/**
+ * Observe a vscode event.
+ *
+ * @param event The event to observe
+ * @return An observable which pushes every event
+ */
+const observeEvent = <T>(event: Event<T>): Observable<T> =>
+    Observable.fromEventPattern(
+        (handler) => event((d) => handler(d)),
+        (_: any, subscription: Disposable) => subscription.dispose(),
+        (d) => d as T,
+    );
+
+/**
+ * Register providers and commands.
+ *
+ * @param context The extension context
+ */
+const registerRefactoringProvidersAndCommands =
+    (context: ExtensionContext): void => {
+        // Register code actions to apply HLint suggestions, and a corresponding
+        // command.
+        context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
+            "haskell", { provideCodeActions: provideHLintCodeActions }));
+        context.subscriptions.push(vscode.commands.registerCommand(
+            commands.APPLY_REFACTORINGS, applyRefactorings));
+    };
+
+/**
+ * Start linting with HLint.
+ *
+ * @param context The extension context
+ */
+const startLinting = (context: ExtensionContext): void => {
+    // Create a diagnostic collection to highlight HLint messages, and register
+    // it to make sure it's disposed when the extension is disabled.
+    const diagnostics = vscode.languages.createDiagnosticCollection("hlint");
+    context.subscriptions.push(diagnostics);
+
+    // Lint all currently open documents, plus every time a document was opened
+    // or saved.  Only lint each document once in 200ms to avoid flooding the
+    // system with too many hlint process.
+    const linting = Observable.from(vscode.workspace.textDocuments)
+        .merge(observeEvent(vscode.workspace.onDidOpenTextDocument))
+        .merge(observeEvent(vscode.workspace.onDidSaveTextDocument))
+        .merge(observeEvent(vscode.workspace.onDidChangeTextDocument)
+            .map(({ document }) => document))
+        .filter((document) => document.languageId === "haskell")
+        .groupBy((document) => document.uri)
+        .map((events) => events.debounceTime(200))
+        .mergeAll()
+        .map((document) => lintDocument(document)
+            .catch((err) => {
+                // If an error occurs while linting show the error message,
+                // delete past diagnostics for the document and continue with an
+                // empty promise.
+                vscode.window.showErrorMessage(err.toString());
+                diagnostics.delete(document.uri);
+                return Observable.empty<IHLintResult>();
+            }))
+        .mergeAll()
+        .subscribe(({ document, messages }) => {
+            diagnostics.set(document.uri,
+                messages.filter((m) => m.file === "-").map(toDiagnostic));
+        });
+    context.subscriptions.push({ dispose: linting.unsubscribe });
+
+    // Remove diagnostics whenever a document is closed.
+    const cleanup = observeEvent(vscode.workspace.onDidCloseTextDocument)
+        .subscribe((document) => diagnostics.delete(document.uri));
+    context.subscriptions.push({ dispose: cleanup.unsubscribe });
 };
 
 /**
@@ -391,66 +447,6 @@ const getExpectedVersion = (
                 `Failed to extract ${program} version from ${stdout}`);
         }
     });
-
-/**
- * Register providers and commands.
- *
- * @param context The extension context
- */
-const registerRefactoringProvidersAndCommands =
-    (context: ExtensionContext): void => {
-        // Register code actions to apply HLint suggestions, and a corresponding
-        // command.
-        context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
-            "haskell", { provideCodeActions: provideHLintCodeActions }));
-        context.subscriptions.push(vscode.commands.registerCommand(
-            commands.APPLY_REFACTORINGS, applyRefactorings));
-    };
-
-/**
- * Start linting with HLint.
- *
- * @param context The extension context
- */
-const startLinting = (context: ExtensionContext): void => {
-    // Create a diagnostic collection to highlight HLint messages, and register
-    // it to make sure it's disposed when the extension is disabled.
-    const diagnostics = vscode.languages.createDiagnosticCollection("hlint");
-    context.subscriptions.push(diagnostics);
-
-    // Lint all currently open documents, plus every time a document was opened
-    // or saved.  Only lint each document once in 200ms to avoid flooding the
-    // system with too many hlint process.
-    const linting = Observable.from(vscode.workspace.textDocuments)
-        .merge(observeEvent(vscode.workspace.onDidOpenTextDocument))
-        .merge(observeEvent(vscode.workspace.onDidSaveTextDocument))
-        .merge(observeEvent(vscode.workspace.onDidChangeTextDocument)
-            .map(({ document }) => document))
-        .filter((document) => document.languageId === "haskell")
-        .groupBy((document) => document.uri)
-        .map((events) => events.debounceTime(200))
-        .mergeAll()
-        .map((document) => lintDocument(document)
-            .catch((err) => {
-                // If an error occurs while linting show the error message,
-                // delete past diagnostics for the document and continue with an
-                // empty promise.
-                vscode.window.showErrorMessage(err.toString());
-                diagnostics.delete(document.uri);
-                return Observable.empty<IHLintResult>();
-            }))
-        .mergeAll()
-        .subscribe(({ document, messages }) => {
-            diagnostics.set(document.uri,
-                messages.filter((m) => m.file === "-").map(toDiagnostic));
-        });
-    context.subscriptions.push({ dispose: linting.unsubscribe });
-
-    // Remove diagnostics whenever a document is closed.
-    const cleanup = observeEvent(vscode.workspace.onDidCloseTextDocument)
-        .subscribe((document) => diagnostics.delete(document.uri));
-    context.subscriptions.push({ dispose: cleanup.unsubscribe });
-};
 
 /**
  * Version ranges required by this extension.
