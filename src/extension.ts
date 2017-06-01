@@ -19,9 +19,7 @@
 import { execFile } from "child_process";
 import * as fs from "fs";
 
-import {
-    Observable,
-} from "rxjs/Rx";
+import { Observable, Observer } from "rxjs/Rx";
 import * as semver from "semver";
 import * as tmp from "tmp";
 
@@ -140,29 +138,25 @@ const toDiagnostic = (hlintMessage: IHLintMessage): Diagnostic => {
  *
  * @param command The command to run.  The first element is the executable
  * @param stdin Optional text to write to standard input
- * @return The standard output of the command
+ * @return An observable with standard output of the command
  */
-const runInWorkspace = (command: string[], stdin?: string): Promise<string> => {
-    return new Promise<string>((resolve, reject) => {
-        const cwd = vscode.workspace.rootPath || process.cwd();
-        const child = execFile(command[0], command.slice(1), { cwd },
-            (error, stdout, stderr) => {
-                if (error) {
-                    // tslint:disable-next-line:max-line-length
-                    const errorMessage =
-                        `Failed to run ${command}: ${error.message} (stderr: ${stderr})`;
-                    reject(new Error(errorMessage));
-                } else {
-                    resolve(stdout);
-                }
-            });
-        if (stdin) {
-            // Send standard input and close stdin stream to notify the child
-            // process
-            child.stdin.write(stdin, () => child.stdin.end());
-        }
-    });
-};
+const runInWorkspace =
+    (command: string[], stdin?: string): Observable<string> =>
+        Observable.create((observer: Observer<string>): void => {
+            const cwd = vscode.workspace.rootPath || process.cwd();
+            const child = execFile(command[0], command.slice(1), { cwd },
+                (error, stdout, _stderr) => {
+                    if (error) {
+                        observer.error(error);
+                    } else {
+                        observer.next(stdout);
+                        observer.complete();
+                    }
+                });
+            if (stdin) {
+                child.stdin.end(stdin);
+            }
+        });
 
 /**
  * A temporary file.
@@ -183,46 +177,46 @@ interface ITemporaryFile {
  * Create a temporary file with the given contents.
  *
  * @param contents The contents of the file.
- * @return The temporary file.
+ * @return An observable pushing the temporary file.
  */
-const temporaryFile = (contents: string): Promise<ITemporaryFile> => {
-    return new Promise<ITemporaryFile>((resolve, reject) => {
+const temporaryFile = (contents: string): Observable<ITemporaryFile> =>
+    Observable.create((observer: Observer<ITemporaryFile>): void => {
         tmp.file((err, path, fd, cleanup) => {
             if (err) {
-                reject(err);
+                observer.error(err);
             } else {
                 fs.createWriteStream("", { fd }).end(contents, () => {
-                    resolve({ path, cleanup });
+                    observer.next({ path, cleanup });
+                    observer.complete();
                 });
             }
         });
     });
-};
 
 /**
  * Refactor a piece of code with "refactor".
  *
  * @param code The code to refactor.
  * @param refactorings A serialized description of the refactorings to apply
- * @return The refactored code, or null if no refactoring was performed.
+ * @return An observable with the refactored code or null if no refactoring was
+ *         performed.
  */
 const refactor =
-    async (code: string, refactorings: string): Promise<string | null> => {
-        const refactFile = await temporaryFile(refactorings);
-        try {
-            const refactoredCode = await runInWorkspace(
-                ["refactor", "--refact-file", refactFile.path], code);
-            if (0 < refactoredCode.length) {
-                // Trim the last character from the refactored code because
-                // refactor seems to add an extra newline.
-                return refactoredCode.slice(0, -1);
-            } else {
-                return null;
-            }
-        } finally {
-            refactFile.cleanup();
-        }
-    };
+    (code: string, refactorings: string): Observable<string | null> =>
+        temporaryFile(refactorings)
+            .concatMap((refactFile) =>
+                runInWorkspace(
+                    ["refactor", "--refact-file", refactFile.path], code,
+                ).finally(() => refactFile.cleanup()))
+            .map((stdout) => {
+                if (0 < stdout.length) {
+                    // Trim the last character from the refactored code because
+                    // refactor seems to add an extra newline.
+                    return stdout.slice(0, -1);
+                } else {
+                    return null;
+                }
+            });
 
 /**
  * The maximum range, to refer to the whole document.
@@ -268,26 +262,28 @@ const provideHLintCodeActions = (
  * @return Whether the refactoring was applied or not
  */
 const applyRefactorings =
-    async (document: TextDocument, refactorings: string): Promise<boolean> => {
-        try {
-            const refactoredCode = await refactor(
-                document.getText(), `[("", ${refactorings})]`);
-            if (refactoredCode) {
+    (document: TextDocument, refactorings: string): Promise<boolean> =>
+        refactor(document.getText(), `[("", ${refactorings})]`)
+            .catch((error): Observable<string | null> => {
+                vscode.window.showErrorMessage(
+                    `Failed to refactor hlint suggestions: ${error.message}`);
+                throw error;
+            })
+            .filter((code) => !!code) // Ensure that code's defined
+            .map((code) => {
                 const edit = new WorkspaceEdit();
                 // Replace the whole document with the new refactored code.
                 edit.replace(document.uri,
                     document.validateRange(MAX_RANGE),
-                    refactoredCode);
-                return vscode.workspace.applyEdit(edit);
-            } else {
-                return false;
-            }
-        } catch (err) {
-            vscode.window.showErrorMessage(
-                `Failed to refactor hlint suggestions: ${err.message}`);
-            throw err;
-        }
-    };
+                    // Code's not null here, because we filtered accordingly
+                    // above
+                    code!);
+                return edit;
+            })
+            .concatMap((edit) => Observable.fromPromise(
+                vscode.workspace.applyEdit(edit)))
+            .defaultIfEmpty(false)
+            .toPromise();
 
 /**
  * An event that can be subscribed to.
@@ -330,7 +326,7 @@ interface IHLintResult {
  */
 const lintDocument = (document: TextDocument): Observable<IHLintResult> => {
     const cmd = ["hlint", "--no-exit-code", "--json", "-"];
-    return Observable.fromPromise(runInWorkspace(cmd, document.getText()))
+    return runInWorkspace(cmd, document.getText())
         .map((stdout) => ({ document, messages: JSON.parse(stdout) }));
 };
 
@@ -377,7 +373,7 @@ const getExpectedVersion = (
     command: string[],
     pattern: RegExp,
     range: string,
-): Observable<string> => Observable.fromPromise(runInWorkspace(command))
+): Observable<string> => runInWorkspace(command)
     .map((stdout) => {
         const matches = stdout.match(pattern);
         if (matches && matches.length === 2) {
