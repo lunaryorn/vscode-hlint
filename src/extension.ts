@@ -432,7 +432,7 @@ const startLinting = (context: ExtensionContext): void => {
             .map(({ document }) => document))
         .filter((document) => document.languageId === "haskell")
         .groupBy((document) => document.uri)
-        .map((events) => events.throttleTime(200))
+        .map((events) => events.debounceTime(200))
         .mergeAll()
         .map((document) => lintDocument(document)
             .catch((err) => {
