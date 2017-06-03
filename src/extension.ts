@@ -19,7 +19,7 @@
 import { execFile } from "child_process";
 import * as fs from "fs";
 
-import { Observable, Observer } from "rxjs/Rx";
+import { Observable, Observer } from "rxjs";
 import * as semver from "semver";
 import * as tmp from "tmp";
 
@@ -33,6 +33,7 @@ import {
     ExtensionContext,
     Range,
     TextDocument,
+    TextEdit,
     WorkspaceEdit,
 } from "vscode";
 import * as vscode from "vscode";
@@ -281,6 +282,23 @@ const applyRefactorings =
             .defaultIfEmpty(false)
             .toPromise();
 
+const provideHLintFormattingEdit = (
+    document: TextDocument, _: any, token: CancellationToken,
+): Promise<TextEdit[]> => {
+    // TODO: Find out why this formatter doesn't work
+    const getRefactorings = ["hlint", "--no-exit-code", "--serialise", "-"];
+    return runInWorkspace(getRefactorings, document.getText())
+        .concatMap((refactorings) => refactor(document.getText(), refactorings))
+        .filter((code) => !!code && !token.isCancellationRequested)
+        .map((code) => {
+            const range = document.validateRange(
+                new Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE));
+            return [TextEdit.replace(range, code!)];
+        })
+        .defaultIfEmpty([])
+        .toPromise();
+};
+
 /**
  * The result of an HLint run.
  */
@@ -339,6 +357,11 @@ const registerRefactoringProvidersAndCommands =
             "haskell", { provideCodeActions: provideHLintCodeActions }));
         context.subscriptions.push(vscode.commands.registerCommand(
             commands.APPLY_REFACTORINGS, applyRefactorings));
+        context.subscriptions.push(
+            vscode.languages.registerDocumentFormattingEditProvider(
+                "haskell", {
+                    provideDocumentFormattingEdits: provideHLintFormattingEdit,
+                }));
     };
 
 /**
