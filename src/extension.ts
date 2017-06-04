@@ -219,34 +219,6 @@ const refactor =
             });
 
 /**
- * Provide code actions to apply HLint suggestions.
- *
- * Create a code action for every HLint diagnostic in context that provides a
- * refactoring.
- *
- * @param document The document for which to provide actions
- * @param _range Ignored
- * @param context The context for which to provide actions
- * @param _token Ignored
- * @return A list of commands that apply code actions
- */
-const provideHLintCodeActions = (
-    document: TextDocument,
-    _range: Range, context:
-        CodeActionContext,
-    _token: CancellationToken,
-): Command[] =>
-    context.diagnostics
-        .filter((d) => d.source === HLINT_SOURCE && d.code)
-        .map((diagnostic) => {
-            return {
-                arguments: [document, diagnostic.code],
-                command: commands.APPLY_REFACTORINGS,
-                title: `Fix: ${diagnostic.message}`,
-            };
-        });
-
-/**
  * Apply refactorings, used as command callback for a code action command.
  *
  * Call the "refactor" tool to apply the refactoring, and replace the document
@@ -336,7 +308,19 @@ const registerRefactoringProvidersAndCommands =
         // Register code actions to apply HLint suggestions, and a corresponding
         // command.
         context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
-            "haskell", { provideCodeActions: provideHLintCodeActions }));
+            "haskell", {
+                provideCodeActions(document, _, actionContext) {
+                    return actionContext.diagnostics
+                        .filter((d) => d.source === HLINT_SOURCE && d.code)
+                        .map((diagnostic) => {
+                            return {
+                                arguments: [document, diagnostic.code],
+                                command: commands.APPLY_REFACTORINGS,
+                                title: `Fix: ${diagnostic.message}`,
+                            };
+                        });
+                },
+            }));
         context.subscriptions.push(vscode.commands.registerCommand(
             commands.APPLY_REFACTORINGS, applyRefactorings));
     };
