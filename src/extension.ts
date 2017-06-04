@@ -24,9 +24,6 @@ import * as semver from "semver";
 import * as tmp from "tmp";
 
 import {
-    CancellationToken,
-    CodeActionContext,
-    Command,
     Diagnostic,
     DiagnosticSeverity,
     Disposable,
