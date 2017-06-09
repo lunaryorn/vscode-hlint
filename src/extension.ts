@@ -78,7 +78,7 @@ interface IHLintMessage {
     /** The suggested replacement. */
     readonly to: string;
     /** Additional notes? */
-    readonly note: string[];
+    readonly note: ReadonlyArray<string>;
     /** Internal representation of suggested refactoring? */
     readonly refactorings: string;
 }
@@ -138,11 +138,11 @@ const toDiagnostic = (hlintMessage: IHLintMessage): Diagnostic => {
  * @return An observable with standard output of the command
  */
 const runInWorkspace =
-    (command: string[], stdin?: string): Observable<string> =>
+    (command: ReadonlyArray<string>, stdin?: string): Observable<string> =>
         Observable.create((observer: Observer<string>): void => {
             const cwd = vscode.workspace.rootPath || process.cwd();
             const child = execFile(command[0], command.slice(1), { cwd },
-                (error, stdout, _stderr) => {
+                (error, stdout) => {
                     if (error) {
                         observer.error(error);
                     } else {
@@ -167,7 +167,7 @@ interface ITemporaryFile {
     /**
      * Cleanup this temporary, i.e. delete it.
      */
-    cleanup(): void;
+    readonly cleanup: () => void;
 }
 
 /**
@@ -262,7 +262,7 @@ interface IHLintResult {
     /**
      * Messages from HLint.
      */
-    readonly messages: IHLintMessage[];
+    readonly messages: ReadonlyArray<IHLintMessage>;
 }
 
 /**
@@ -272,9 +272,9 @@ interface IHLintResult {
  * @return An observable with the result of linting
  */
 const lintDocument = (document: TextDocument): Observable<IHLintResult> => {
-    const cmd = ["hlint", "--no-exit-code", "--json", "-"];
-    return runInWorkspace(cmd, document.getText())
-        .map((stdout) => ({ document, messages: JSON.parse(stdout) }));
+    return runInWorkspace(
+        ["hlint", "--no-exit-code", "--json", "-"], document.getText(),
+    ).map((stdout) => ({ document, messages: JSON.parse(stdout) }));
 };
 
 /**
@@ -407,7 +407,7 @@ class VersionError extends Error {
  */
 const getExpectedVersion = (
     program: string,
-    command: string[],
+    command: ReadonlyArray<string>,
     pattern: RegExp,
     range: string,
 ): Observable<string> => runInWorkspace(command)
@@ -470,7 +470,7 @@ export function activate(context: ExtensionContext): Promise<any> {
         "apply-refact", ["refactor", "--version"],
         /^v(\d+\.\d+\.\d+)/, VERSION_RANGES.applyRefact,
     ).catch((error) => {
-        if (error instanceof VersionError) {
+        if (error.name instanceof VersionError) {
             vscode.window.showWarningMessage(
                 `HLint suggestions not available: ${error.message}`);
             return Observable.empty();
