@@ -5,6 +5,7 @@
     "version": "0.4.0",
     "homepage": "https://marketplace.visualstudio.com/items?itemName=lunaryorn.hlint",
     "bugs": "https://github.com/lunaryorn/vscode-hlint/issues",
+    "icon": "haskell-logo.png",
     "author": {
         "name": "Sebastian Wiesner",
         "email": "swiesner@lunaryorn.com",
@@ -18,6 +19,10 @@
     "publisher": "lunaryorn",
     "engines": {
         "vscode": "^1.12.0"
+    },
+    "galleryBanner": {
+        "color": "#19111f",
+        "theme": "dark"
     },
     "categories": [
         "Linters",
