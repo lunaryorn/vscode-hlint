@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+
+## 0.4.1 – 2017-06-26
 ### Added
 - Use Haskell logo in Marketplace and set a gallery bannery color, see
   https://github.com/lunaryorn/vscode-hlint/issues/5

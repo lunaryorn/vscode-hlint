@@ -2,7 +2,7 @@
     "name": "hlint",
     "displayName": "hlint",
     "description": "Lint Haskell with HLint",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "homepage": "https://marketplace.visualstudio.com/items?itemName=lunaryorn.hlint",
     "bugs": "https://github.com/lunaryorn/vscode-hlint/issues",
     "icon": "haskell-logo.png",
