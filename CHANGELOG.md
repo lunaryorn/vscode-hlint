@@ -7,11 +7,11 @@ Versioning](http://semver.org/)!
 
 ## [Unreleased]
 ### Changed
-- Relicense under MIT (formerly GPL-3)
+- Relicense under MIT (formerly GPL-3).
 
 ## 0.4.0 – 2017-06-02
 ### Added
-- Lint documents on the fly when changed
+- Lint documents on the fly when changed.
 
 ### Changed
 - The extension now fails to activate if HLint is not present or if the HLint
@@ -26,25 +26,26 @@ Versioning](http://semver.org/)!
   aforementioned versions.
 
 ### Fixed
-- Only lint Haskell files.  I simply forgot this check 🙈
+- Only lint Haskell files.  I simply forgot this check 🙈.
 
 ## 0.3.1 – 2017-05-22
 ### Added
-- Add more metadata for the marketplace side
+- Add more metadata for the marketplace side.
 
 ## 0.3.0 – 2017-05-22
 ### Changed
-- Improve title of quick fixes
+- Improve title of quick fixes.
 - Apply quick fixes as workspace edit, for better undo and more reliable text
-  replacement [GH-2]
+  replacement, see <https://github.com/lunaryorn/vscode-hlint/issues/2>.
 
 ## 0.2.0 - 2017-05-21
 ### Added
-- Apply suggestions from HLint (requires
-  [apply-refact](https://github.com/mpickering/apply-refact))
+- Apply suggestions from HLint (requires [apply-refact][]).
+
+[apply-refact]: https://github.com/mpickering/apply-refact
 
 ### Fixed
-- Properly unset diagnostics
+- Properly unset diagnostics.
 
 ## 0.1.0 - 2017-05-21
 - Initial release
