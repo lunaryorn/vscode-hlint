@@ -9,7 +9,10 @@ Lint Haskell code with [HLint][] in [Visual Studio Code][code].
 
 ## Prerequisites
 
-`hlint` **2.0.8** or newer must be available in `$PATH`.  HLint 1.9.25 and upwards should work too, but I'm not testing it.  HLint 2.0.0 to 2.0.7 do **not** work—these versions can't read code from standard input.
+* [Stack](http://haskellstack.org) must be in `$PATH`.
+* `hlint` **2.0.8** or newer must be available build in the current stack project.  HLint 1.9.25 and upwards should work too, but I'm not testing it.  HLint 2.0.0 to 2.0.7 do **not** work—these versions can't read code from standard input.
+
+To build hlint in a stack project run `stack build hlint` (`build`, _not_ `install`!) in the stack project.
 
 To apply suggestions `refactor` from [apply-refact][] 0.3 or newer must be in `$PATH`.  If it's missing you'll see a warning message and the light bulb feature won't be available for HLint suggestions, but linting will continue to work just fine.
 

@@ -6,6 +6,9 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+### Changed
+- Run hlint through [stack](http://haskellstack.org) to use local hlint from
+  stack projects
 
 ## 0.4.1 – 2017-06-26
 ### Added

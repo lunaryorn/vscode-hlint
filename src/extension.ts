@@ -54,6 +54,15 @@ const commands = {
 };
 
 /**
+ * Wrap a command with "stack exec".
+ *
+ * @param cmd The command to wrap
+ * @return cmd wrapped with stack exec
+ */
+const stackExec = (cmd: ReadonlyArray<string>): ReadonlyArray<string> =>
+    ["stack", "exec", "--", ...cmd];
+
+/**
  * An HLint message, as it appears in HLint's JSON output.
  */
 interface IHLintMessage {
@@ -275,7 +284,8 @@ interface IHLintResult {
  */
 const lintDocument = (document: TextDocument): Observable<IHLintResult> => {
     return runInWorkspace(
-        ["hlint", "--no-exit-code", "--json", "-"], document.getText(),
+        stackExec(["hlint", "--no-exit-code", "--json", "-"]),
+        document.getText(),
     ).map((stdout) => ({ document, messages: JSON.parse(stdout) }));
 };
 
@@ -454,7 +464,7 @@ export function activate(context: ExtensionContext): Promise<any> {
     // Enable linting with HLint or fail if it's missing or doesn't meet our
     // requirements
     const enableLinting = getExpectedVersion(
-        "HLint", ["hlint", "--version"],
+        "HLint", stackExec(["hlint", "--version"]),
         /^HLint v([^,]+),/, VERSION_RANGES.hlint,
     ).do((version) => {
         console.info("lunaryorn.hlint: found HLint version", version,
