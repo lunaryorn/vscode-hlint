@@ -6,9 +6,12 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+
+## 0.5.0 – 2017-08-24
 ### Changed
 - Run hlint and apply-refact through [stack](http://haskellstack.org) to avoid
   global installation of hlint and apply-refact
+- Relicense under Apache 2.0
 
 ## 0.4.1 – 2017-06-26
 ### Added
