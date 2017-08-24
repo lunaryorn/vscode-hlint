@@ -214,7 +214,8 @@ const refactor =
         temporaryFile(refactorings)
             .concatMap((refactFile) =>
                 runInWorkspace(
-                    ["refactor", "--refact-file", refactFile.path], code,
+                    stackExec(["refactor", "--refact-file", refactFile.path]),
+                    code,
                 ).finally(() => refactFile.cleanup()))
             .map((stdout) => {
                 if (0 < stdout.length) {
@@ -479,7 +480,7 @@ export function activate(context: ExtensionContext): Promise<any> {
     // (these have at most three components).  To work around this we explicitly
     // extract just the first three components of the refactor version number.
     const enableRefactoring = getExpectedVersion(
-        "apply-refact", ["refactor", "--version"],
+        "apply-refact", stackExec(["refactor", "--version"]),
         /^v(\d+\.\d+\.\d+)/, VERSION_RANGES.applyRefact,
     ).catch((error) => {
         if (error.name instanceof VersionError) {

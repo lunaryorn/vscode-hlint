@@ -10,11 +10,13 @@ Lint Haskell code with [HLint][] in [Visual Studio Code][code].
 ## Prerequisites
 
 * [Stack](http://haskellstack.org) must be in `$PATH`.
-* `hlint` **2.0.8** or newer must be available build in the current stack project.  HLint 1.9.25 and upwards should work too, but I'm not testing it.  HLint 2.0.0 to 2.0.7 do **not** work—these versions can't read code from standard input.
+* `hlint` **2.0.8** or newer must be available in the current stack project.  HLint 1.9.25 and upwards should work too, but I'm not testing it.  HLint 2.0.0 to 2.0.7 do **not** work—these versions can't read code from standard input.
 
-To build hlint in a stack project run `stack build hlint` (`build`, _not_ `install`!) in the stack project.
+To add hlint to a stack project run `stack build hlint` (`build`, _not_ `install`!) in the stack project.
 
-To apply suggestions `refactor` from [apply-refact][] 0.3 or newer must be in `$PATH`.  If it's missing you'll see a warning message and the light bulb feature won't be available for HLint suggestions, but linting will continue to work just fine.
+To apply suggestions [apply-refact][] 0.3 or newer must be available in the current stack project.  If it's missing you'll see a warning message and the light bulb feature won't be available for HLint suggestions, but linting will continue to work just fine.
+
+To add apply-refact to a stack project run `stack build apply-refact` in the top-level directory of the project.
 
 [apply-refact]: https://github.com/mpickering/apply-refact
 

@@ -7,8 +7,8 @@ Versioning](http://semver.org/)!
 
 ## [Unreleased]
 ### Changed
-- Run hlint through [stack](http://haskellstack.org) to use local hlint from
-  stack projects
+- Run hlint and apply-refact through [stack](http://haskellstack.org) to avoid
+  global installation of hlint and apply-refact
 
 ## 0.4.1 – 2017-06-26
 ### Added
