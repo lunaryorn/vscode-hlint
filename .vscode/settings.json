@@ -3,7 +3,8 @@
         "out": true
     },
     "search.exclude": {
-        "out": true
+        "out": true,
+        "node_modules/**": true
     },
     "licenser.license": "MIT",
     "licenser.author": "Sebastian Wiesner <swiesner@lunaryorn.com>",
