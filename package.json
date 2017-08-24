@@ -15,7 +15,7 @@
         "type": "git",
         "url": "https://github.com/lunaryorn/vscode-hlint.git"
     },
-    "license": "MIT",
+    "license": "Apache-2.0",
     "publisher": "lunaryorn",
     "engines": {
         "vscode": "^1.12.0"
