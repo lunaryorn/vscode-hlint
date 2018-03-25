@@ -68,12 +68,12 @@
     },
     "dependencies": {
         "rxjs": "^5.4.0",
-        "semver": "^5.3.0",
+        "semver": "^5.5.0",
         "tmp": "^0.0.31"
     },
     "devDependencies": {
         "@types/node": "^6.0.40",
-        "@types/semver": "^5.3.31",
+        "@types/semver": "^5.5.0",
         "@types/tmp": "^0.0.33",
         "tslint": "^5.2.0",
         "tslint-immutable": "^4.0.1",
