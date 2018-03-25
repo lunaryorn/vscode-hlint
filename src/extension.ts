@@ -422,10 +422,11 @@ const getExpectedVersion = (
         const matches = stdout.match(pattern);
         if (matches && matches.length === 2) {
             const version = matches[1];
-            // Compare ranges loosely since we might not get a totally valid
-            // semantic version from the program
-            if (semver.satisfies(version, range, true)) {
-                return version;
+            // Attempt to coerce whatever version hlint reports into a valid
+            // semantic version, then compare that against our range
+            const coerced = semver.coerce(version);
+            if (coerced && semver.satisfies(coerced, range)) {
+                return coerced.version;
             } else {
                 // tslint:disable-next-line:max-line-length
                 throw new VersionError(`${program} version ${version} did not meet requirements ${range}`);
