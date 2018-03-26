@@ -6,6 +6,8 @@ to structure this file.  This project does **not** adhere to [Semantic
 Versioning](http://semver.org/)!
 
 ## [Unreleased]
+
+## 0.5.1 – 2018-03-26
 ### Fixed
 - Support hlint 2.1, see <https://github.com/lunaryorn/vscode-hlint/issues/7>
   and <https://github.com/lunaryorn/vscode-hlint/pull/8>
