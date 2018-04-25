@@ -67,12 +67,12 @@
         "test": "node ./node_modules/vscode/bin/test"
     },
     "dependencies": {
-        "rxjs": "^5.4.0",
+        "rxjs": "^6.0.0",
         "semver": "^5.5.0",
-        "tmp": "^0.0.31"
+        "tmp": "^0.0.33"
     },
     "devDependencies": {
-        "@types/node": "^6.0.40",
+        "@types/node": "^9.6.6",
         "@types/semver": "^5.5.0",
         "@types/tmp": "^0.0.33",
         "tslint": "^5.2.0",

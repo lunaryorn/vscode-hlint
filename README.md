@@ -1,5 +1,7 @@
 # VSCode HLint
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/lunaryorn/vscode-hlint.svg)](https://greenkeeper.io/)
+
 [![Build Status](https://travis-ci.org/lunaryorn/vscode-hlint.svg?branch=master)](https://travis-ci.org/lunaryorn/vscode-hlint)
 
 Lint Haskell code with [HLint][] in [Visual Studio Code][code].
